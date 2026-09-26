@@ -1,20 +1,8 @@
-export {
-  FacilPayError,
-  FacilPayValidationError,
-  FacilPayAuthenticationError,
-  FacilPayPermissionError,
-  FacilPayNotFoundError,
-  FacilPayConflictError,
-  FacilPayRateLimitError,
-  FacilPayAPIError,
-  FacilPayConnectionError,
-  FacilPaySignatureVerificationError,
-  createErrorFromResponse,
-  errorClassForStatus,
-  parseRetryAfter,
-} from './core/errors';
+import { FacilPay } from './client';
+import { FacilPayError } from './core/errors';
+import { VERSION } from './core/version';
 
-export type {
-  FacilPayErrorOptions,
-  FacilPayErrorBody,
-} from './core/errors';
+export { FacilPay, FacilPayError, VERSION };
+export type { FacilPayOptions, Environment } from './client';
+
+export default FacilPay;

@@ -1,0 +1,52 @@
+{
+  "name": "@facilpay/sdk",
+  "version": "0.1.0",
+  "description": "Official TypeScript SDK for the FacilPay API and Soroban contracts",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "./dist/cjs/index.cjs",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.cjs"
+    },
+    "./contracts": {
+      "types": "./dist/esm/contracts/index.d.ts",
+      "import": "./dist/esm/contracts/index.js",
+      "require": "./dist/cjs/contracts/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.16.4",
+    "@types/node": "^20.14.0",
+    "eslint": "^9.9.0",
+    "prettier": "^3.3.3",
+    "publint": "^0.2.10",
+    "tsup": "^8.2.4",
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^8.2.0",
+    "vitest": "^2.0.5"
+  }
+}
