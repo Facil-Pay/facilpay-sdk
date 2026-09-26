@@ -1,6 +1,7 @@
 import { FacilPayValidationError } from '../core/errors';
 import { resolveIdempotencyKey } from '../core/idempotency';
 import type { HttpClient, RequestOptions } from '../core/http';
+import { paginate, type PageEnvelope, type PagePromise } from '../core/pagination';
 import type {
   BulkPaymentRequest,
   BulkPaymentResponse,
@@ -60,11 +61,28 @@ export class PaymentsResource {
     return this.http.get<Payment>(`/v1/payments/${id}`, options);
   }
 
-  async list(
+  /**
+   * List payments.
+   *
+   * The returned `PagePromise<Payment>` can be awaited for the first page or
+   * iterated with `for await` to walk every page:
+   *
+   * ```ts
+   * for await (const payment of facilpay.payments.list()) {
+   *   // payment: Payment
+   * }
+   * ```
+   */
+  list(
     params: Record<string, unknown> = {},
     options: RequestOptions = {},
-  ): Promise<Payment[]> {
-    return this.http.get<Payment[]>('/v1/payments', { ...options, params });
+  ): PagePromise<Payment> {
+    return paginate<Payment>((page) =>
+      this.http.get<PageEnvelope<Payment>>('/v1/payments', {
+        ...options,
+        params: { ...params, page },
+      }),
+    );
   }
 }
 
