@@ -484,3 +484,8 @@ Contributions are welcome.
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
+
+## Handsoff notes
+
+<!-- handsoff-issue-6 -->
+- #6: Automatic retries with exponential backoff, jitter and Retry-After support
