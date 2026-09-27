@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: facilpay
+      POSTGRES_PASSWORD: facilpay
+      POSTGRES_DB: facilpay_test
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U facilpay -d facilpay_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - facilpay_pgdata:/var/lib/postgresql/data
+
+  facilpay-api:
+    image: facilpay/facilpay-api:${FACILPAY_API_TAG:-latest}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://facilpay:facilpay@postgres:5432/facilpay_test
+      NODE_ENV: test
+      PORT: "4000"
+      JWT_SECRET: integration-test-secret
+      API_KEY_PREFIX: fp_test_
+    ports:
+      - "4000:4000"
+    command: >
+      sh -c "npm run migrate && npm run start"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4000/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  facilpay_pgdata:

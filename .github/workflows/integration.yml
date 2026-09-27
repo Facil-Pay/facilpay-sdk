@@ -1,0 +1,41 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * *'
+  pull_request:
+    types: [labeled]
+
+jobs:
+  integration:
+    name: Integration (Docker Compose)
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-integration'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run integration tests
+        run: npm run test:integration
+
+      - name: Dump container logs on failure
+        if: failure()
+        run: |
+          docker compose -f test/integration/docker-compose.yml logs --no-color || true
+
+      - name: Tear down containers and volumes
+        if: always()
+        run: |
+          docker compose -f test/integration/docker-compose.yml down -v --remove-orphans || true

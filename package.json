@@ -34,14 +34,26 @@
     "dev": "tsup --watch",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "lint": "eslint .",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit"
   },
+  "peerDependencies": {
+    "@stellar/stellar-sdk": "^12.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@stellar/stellar-sdk": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.16.4",
+    "@stellar/stellar-sdk": "^12.0.0",
     "@types/node": "^20.14.0",
+    "@vitest/coverage-v8": "^2.0.5",
     "eslint": "^9.9.0",
+    "msw": "^2.4.9",
     "prettier": "^3.3.3",
     "publint": "^0.2.10",
     "tsup": "^8.2.4",
