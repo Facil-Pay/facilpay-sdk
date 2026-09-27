@@ -38,8 +38,17 @@
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit"
   },
+  "peerDependencies": {
+    "@stellar/stellar-sdk": "^12.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@stellar/stellar-sdk": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.16.4",
+    "@stellar/stellar-sdk": "^12.0.0",
     "@types/node": "^20.14.0",
     "eslint": "^9.9.0",
     "prettier": "^3.3.3",
