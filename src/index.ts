@@ -3,10 +3,8 @@ import { FacilPayError } from './core/errors';
 import { VERSION } from './core/version';
 
 export { FacilPay, FacilPayError, VERSION };
-export type { FacilPayOptions, FacilPayEnvironment as Environment } from './client';
-export { Webhooks } from './webhooks/verify';
-export type { ConstructEventOptions, WebhookPayload } from './webhooks/verify';
-export type { FacilPayEvent, WebhookEventType } from './webhooks/events';
+export type { FacilPayOptions, Environment } from './client';
+export type { Logger } from './core/http';
 
 // Soroban contract bindings live behind the separate `@facilpay/sdk/contracts`
 // entry point so REST-only consumers never pull in `@stellar/stellar-sdk`.
