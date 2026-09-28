@@ -36,6 +36,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint .",
+    "typecheck:examples": "npm run typecheck --prefix examples/express && npm run typecheck --prefix examples/nextjs && npm run typecheck --prefix examples/node-script",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit"
   },

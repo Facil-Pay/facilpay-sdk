@@ -1,0 +1,19 @@
+{
+  "name": "@facilpay/example-node-script",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "predev": "npm install --prefix ../.. && npm run build --prefix ../..",
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@facilpay/sdk": "file:../..",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30",
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.3"
+  }
+}
