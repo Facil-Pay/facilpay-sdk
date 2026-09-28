@@ -20,7 +20,19 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
+
+      - name: Install example dependencies
+        run: |
+          npm install --prefix examples/express
+          npm install --prefix examples/nextjs
+          npm install --prefix examples/node-script
+
+      - name: Build SDK package
+        run: npm run build
+
+      - name: Typecheck examples
+        run: npm run typecheck:examples
 
       - name: Run tests with coverage
         run: npm test -- --coverage
