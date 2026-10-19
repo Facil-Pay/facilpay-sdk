@@ -1,4 +1,5 @@
-import type { HttpClient } from "../client";
+import type { HttpClient } from "../core/http";
+import { paginate, type PagePromise } from "../core/pagination";
 
 export type PaymentLinkSortBy =
   | "createdAt"
@@ -80,10 +81,13 @@ export class PaymentLinksResource {
     });
   }
 
-  list(params: ListPaymentLinksParams = {}): Promise<ListPaymentLinksResponse> {
-    return this.http.get<ListPaymentLinksResponse>("/v1/payment-links", {
-      query: params,
-    });
+  /**
+   * List payment links. Returns a page that is also an `AsyncIterable`:
+   * `await` it for the first page, or use `for await` to iterate every
+   * payment link across all pages.
+   */
+  list(params: ListPaymentLinksParams = {}): PagePromise<PaymentLink> {
+    return this.http.getPage<PaymentLink>("/v1/payment-links", params);
   }
 
   retrieve(token: string): Promise<PaymentLink> {

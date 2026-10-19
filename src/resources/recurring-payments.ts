@@ -1,4 +1,5 @@
-import type { HttpClient } from '../client';
+import type { HttpClient } from '../core/http';
+import { paginate, type PagePromise } from '../core/pagination';
 import { FacilPayError } from '../errors';
 
 export type RecurringInterval = 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -89,9 +90,21 @@ export class RecurringPaymentsResource {
     return this.client.post<RecurringPayment>('/v1/recurring-payments', params);
   }
 
-  list(params?: ListRecurringPaymentsParams): Promise<ListRecurringPaymentsResponse> {
-    return this.client.get<ListRecurringPaymentsResponse>('/v1/recurring-payments', {
-      params,
+  /**
+   * List recurring payments. Returns a page that is also an `AsyncIterable`:
+   * `await` it for the first page, or use `for await` to iterate every
+   * recurring payment across all pages.
+   */
+  list(params?: ListRecurringPaymentsParams): PagePromise<RecurringPayment> {
+    const limit = params?.limit ?? 20;
+    // The API is offset-based; translate the 1-based page into an offset and
+    // adapt the envelope to the page shape consumed by `paginate`.
+    return paginate<RecurringPayment>(async (page) => {
+      const response = await this.client.get<ListRecurringPaymentsResponse>(
+        '/v1/recurring-payments',
+        { params: { ...params, limit, offset: (page - 1) * limit } },
+      );
+      return { data: response.data, total: response.total, page, limit };
     });
   }
 

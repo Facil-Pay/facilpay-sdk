@@ -1,4 +1,5 @@
 import { FacilPayConnectionError, FacilPayError } from './errors';
+import { paginate, type PageEnvelope, type PagePromise } from './pagination';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
 
@@ -449,5 +450,123 @@ export class HttpClient {
     } catch {
       return text;
     }
+  }
+
+  /**
+   * Convenience options for the `get`/`post`/`patch`/`put`/`delete` helpers.
+   * Accepts `params` as an alias of `query` for resource modules.
+   */
+  private unwrapOptions(
+    options: Omit<RequestOptions, 'method' | 'path' | 'body' | 'query'> & {
+      query?: QueryParams;
+      params?: object;
+    },
+  ): Omit<RequestOptions, 'method' | 'path' | 'body'> {
+    const { params, query, ...rest } = options;
+    return { ...rest, query: { ...(params as QueryParams | undefined), ...query } };
+  }
+
+  /** `GET` helper that resolves with the unwrapped response body. */
+  async get<T>(
+    path: string,
+    options: Omit<RequestOptions, 'method' | 'path' | 'body' | 'query'> & {
+      query?: QueryParams;
+      params?: object;
+    } = {},
+  ): Promise<T> {
+    const response = await this.request<T>({ ...this.unwrapOptions(options), method: 'GET', path });
+    return response.data;
+  }
+
+  /** `POST` helper that resolves with the unwrapped response body. */
+  async post<T, TBody = unknown>(
+    path: string,
+    body?: TBody,
+    options: Omit<RequestOptions, 'method' | 'path' | 'body' | 'query'> & {
+      query?: QueryParams;
+      params?: object;
+    } = {},
+  ): Promise<T> {
+    const response = await this.request<T, TBody>({
+      ...this.unwrapOptions(options),
+      method: 'POST',
+      path,
+      body,
+    });
+    return response.data;
+  }
+
+  /** `PUT` helper that resolves with the unwrapped response body. */
+  async put<T, TBody = unknown>(
+    path: string,
+    body?: TBody,
+    options: Omit<RequestOptions, 'method' | 'path' | 'body' | 'query'> & {
+      query?: QueryParams;
+      params?: object;
+    } = {},
+  ): Promise<T> {
+    const response = await this.request<T, TBody>({
+      ...this.unwrapOptions(options),
+      method: 'PUT',
+      path,
+      body,
+    });
+    return response.data;
+  }
+
+  /** `PATCH` helper that resolves with the unwrapped response body. */
+  async patch<T, TBody = unknown>(
+    path: string,
+    body?: TBody,
+    options: Omit<RequestOptions, 'method' | 'path' | 'body' | 'query'> & {
+      query?: QueryParams;
+      params?: object;
+    } = {},
+  ): Promise<T> {
+    const response = await this.request<T, TBody>({
+      ...this.unwrapOptions(options),
+      method: 'PATCH',
+      path,
+      body,
+    });
+    return response.data;
+  }
+
+  /** `DELETE` helper that resolves with the unwrapped response body. */
+  async delete<T>(
+    path: string,
+    options: Omit<RequestOptions, 'method' | 'path' | 'body' | 'query'> & {
+      query?: QueryParams;
+      params?: object;
+    } = {},
+  ): Promise<T> {
+    const response = await this.request<T>({ ...this.unwrapOptions(options), method: 'DELETE', path });
+    return response.data;
+  }
+
+  /**
+   * `GET` helper for page-based list endpoints. Returns a `PagePromise` that
+   * resolves to the first page and iterates every page with `for await`.
+   */
+  getPage<T, TParams extends { page?: number; limit?: number } = { page?: number; limit?: number }>(
+    path: string,
+    params?: TParams,
+    options: Omit<RequestOptions, 'method' | 'path' | 'body' | 'query'> & {
+      query?: QueryParams;
+      params?: object;
+    } = {},
+  ): PagePromise<T> {
+    const { page: _initialPage, limit = 20, ...restParams } = (params ?? {}) as {
+      page?: number;
+      limit?: number;
+    } & Record<string, unknown>;
+    void _initialPage;
+    const base = this.unwrapOptions(options);
+    return paginate<T>((page) =>
+      this.get<PageEnvelope<T>>(path, {
+        ...base,
+        query: { ...base.query, ...(restParams as QueryParams), page, limit },
+      }),
+    );
   }
 }
