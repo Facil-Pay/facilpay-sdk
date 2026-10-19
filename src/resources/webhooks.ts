@@ -1,4 +1,5 @@
 import type { HttpClient } from '../core/http';
+import type { PageEnvelope } from '../core/pagination';
 import type { ResourceRequestOptions } from './request-options';
 
 /**
@@ -64,6 +65,26 @@ export interface WebhookDeliveryRetryResult {
   status: string;
 }
 
+/** A single webhook delivery attempt. */
+export interface WebhookDelivery {
+  id: string;
+  webhookId: string;
+  event: WebhookEvent;
+  status: string;
+  statusCode?: number;
+  attempts?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Filters accepted by {@link WebhooksResource.listDeliveries}. */
+export interface ListWebhookDeliveriesParams {
+  page?: number;
+  limit?: number;
+  status?: string;
+  event?: WebhookEvent;
+}
+
 /**
  * Webhook endpoints resource.
  *
@@ -92,6 +113,33 @@ export class WebhooksResource {
     return this.http.request<WebhookEndpoint[]>({
       method: 'GET',
       path: '/v1/webhooks',
+      ...options,
+    });
+  }
+
+  /** Fetch a single webhook endpoint by id. */
+  retrieve(id: string, options?: ResourceRequestOptions): Promise<WebhookEndpoint> {
+    return this.http.request<WebhookEndpoint>({
+      method: 'GET',
+      path: `/v1/webhooks/${id}`,
+      ...options,
+    });
+  }
+
+  /**
+   * List the delivery attempts of a webhook endpoint (paginated).
+   *
+   * Use this to find a `deliveryId` for {@link retryDelivery}.
+   */
+  listDeliveries(
+    id: string,
+    params?: ListWebhookDeliveriesParams,
+    options?: ResourceRequestOptions,
+  ): Promise<PageEnvelope<WebhookDelivery>> {
+    return this.http.request<PageEnvelope<WebhookDelivery>>({
+      method: 'GET',
+      path: `/v1/webhooks/${id}/deliveries`,
+      query: params,
       ...options,
     });
   }
