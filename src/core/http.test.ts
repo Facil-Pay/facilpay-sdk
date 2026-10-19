@@ -132,3 +132,58 @@ describe('HttpClient diagnostics', () => {
         expect(debug).toHaveBeenCalledWith(expect.objectContaining({ path: '/payments' }));
     });
 });
+
+describe('HttpClient idempotency', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('auto-generates an Idempotency-Key for POST requests when none is passed', async () => {
+        const fetch = createFetch();
+        const http = new HttpClient({ fetch });
+
+        await http.request({ method: 'POST', path: '/payments', body: { amount: 100 } });
+
+        expect(fetch).toHaveBeenCalledTimes(1);
+        const [, init] = fetch.mock.calls[0];
+        const headers = new Headers(init?.headers as HeadersInit);
+        expect(headers.get('Idempotency-Key')).toMatch(/^[A-Za-z0-9-_.]{1,255}$/);
+    });
+
+    it('does not send an Idempotency-Key for non-POST requests by default', async () => {
+        const fetch = createFetch();
+        const http = new HttpClient({ fetch });
+
+        await http.request({ method: 'GET', path: '/payments' });
+
+        const [, init] = fetch.mock.calls[0];
+        const headers = new Headers(init?.headers as HeadersInit);
+        expect(headers.get('Idempotency-Key')).toBeNull();
+    });
+
+    it('forwards a valid user-provided key unchanged', async () => {
+        const fetch = createFetch();
+        const http = new HttpClient({ fetch });
+
+        await http.request({
+            method: 'POST',
+            path: '/payments',
+            body: { amount: 100 },
+            idempotencyKey: 'user-key_123.abc',
+        });
+
+        const [, init] = fetch.mock.calls[0];
+        const headers = new Headers(init?.headers as HeadersInit);
+        expect(headers.get('Idempotency-Key')).toBe('user-key_123.abc');
+    });
+
+    it('rejects an invalid user-provided key before sending', async () => {
+        const fetch = createFetch();
+        const http = new HttpClient({ fetch });
+
+        await expect(
+            http.request({ method: 'POST', path: '/payments', idempotencyKey: 'not valid!' }),
+        ).rejects.toThrow(/Idempotency-Key/);
+        expect(fetch).not.toHaveBeenCalled();
+    });
+});

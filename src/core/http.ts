@@ -1,4 +1,5 @@
 import { FacilPayConnectionError, FacilPayError } from './errors';
+import { generateIdempotencyKey, validateIdempotencyKey } from './idempotency';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
 
@@ -204,8 +205,18 @@ export class HttpClient {
       timeout = this.timeout,
     } = options;
 
+    // POST requests carry an Idempotency-Key so retried logical requests
+    // reuse the same key. A caller-provided key is validated before sending;
+    // otherwise a fresh key is generated once per request.
+    let resolvedIdempotencyKey = idempotencyKey;
+    if (method === 'POST') {
+      resolvedIdempotencyKey = resolvedIdempotencyKey
+        ? validateIdempotencyKey(resolvedIdempotencyKey)
+        : generateIdempotencyKey();
+    }
+
     const url = buildUrl(this.baseUrl, path, query);
-    const requestHeaders = this.buildHeaders(headers, idempotencyKey, correlationId);
+    const requestHeaders = this.buildHeaders(headers, resolvedIdempotencyKey, correlationId);
     const startedAt = Date.now();
     const controller = new AbortController();
     let timedOut = false;
