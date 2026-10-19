@@ -31,6 +31,12 @@ jobs:
       - name: Build SDK package
         run: npm run build
 
+      - name: Check publish layout (publint)
+        run: npm run publint
+
+      - name: Check type resolutions (attw)
+        run: npm run attw
+
       - name: Typecheck examples
         run: npm run typecheck:examples
 
