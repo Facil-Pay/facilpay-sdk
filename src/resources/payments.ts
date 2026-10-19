@@ -316,6 +316,11 @@ export class Payments {
     params?: GetQrCodeOptions,
     options?: PaymentsRequestOptions,
   ): Promise<string | Uint8Array> {
-    return this.http.get<string | Uint8Array>(`/v1/payments/${encodeURIComponent(id)}/qr`,
+    return this.http.get<string | Uint8Array>(`/v1/payments/${encodeURIComponent(id)}/qr`, {
+      ...withTestMode(options),
+      params,
+    });
+  }
+}
 
-/* … truncated 3200 chars — edit only what you need near the top … */
+

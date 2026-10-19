@@ -1,8 +1,8 @@
 import { FacilPay } from './client';
-import { FacilPayError } from './core/errors';
+import { FacilPayError, FacilPayValidationError } from './core/errors';
 import { VERSION } from './core/version';
 
-export { FacilPay, FacilPayError, VERSION };
+export { FacilPay, FacilPayError, FacilPayValidationError, VERSION };
 export type { FacilPayOptions, Environment } from './client';
 export type { Logger } from './core/http';
 
