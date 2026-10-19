@@ -172,7 +172,13 @@ export function serializeQuery(query?: QueryParams): string {
 export function buildUrl(baseUrl: string, path: string, query?: QueryParams): string {
   const base = stripTrailingSlashes(baseUrl);
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  return `${base}/v1${normalizedPath}${serializeQuery(query)}`;
+  // Resources pass versioned paths (e.g. `/v1/payments`) while callers may
+  // also pass unversioned ones (e.g. `/payments`). Avoid `/v1/v1/...`.
+  const versionedPath =
+    normalizedPath === '/v1' || normalizedPath.startsWith('/v1/')
+      ? normalizedPath
+      : `/v1${normalizedPath}`;
+  return `${base}${versionedPath}${serializeQuery(query)}`;
 }
 
 export class HttpClient {

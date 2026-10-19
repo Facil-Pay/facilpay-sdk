@@ -20,6 +20,10 @@ export interface PaymentLink {
   views: number;
   completions: number;
   active: boolean;
+  /** Hosted checkout URL for this payment link. */
+  url?: string;
+  /** Current state of the payment link. */
+  status?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -71,7 +75,7 @@ function serializeExpiresAt(value: Date | string | undefined): string | undefine
 export class PaymentLinksResource {
   constructor(
     private readonly http: HttpClient,
-    private readonly checkoutBaseUrl: string,
+    private readonly checkoutBaseUrl: string = "",
   ) {}
 
   create(params: CreatePaymentLinkParams, options?: ResourceRequestOptions): Promise<PaymentLink> {

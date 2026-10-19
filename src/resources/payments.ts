@@ -1,7 +1,7 @@
 import { FacilPayValidationError } from '../core/errors';
 import type { BaseRequestOptions, HttpClient } from '../core/http';
 import type { PagePromise } from '../core/pagination';
-import type { Payment, Refund } from '../types';
+import type { Paginated, Payment, Refund } from '../types';
 
 /**
  * Parameters accepted by {@link Payments.create}.
@@ -167,6 +167,46 @@ export class Payments {
   create(params: CreatePaymentParams, options?: PaymentsRequestOptions): Promise<Payment> {
     validateCreatePaymentParams(params);
     return this.http.post<Payment>('/v1/payments', params, withTestMode(options));
+  }
+
+  /**
+   * Retrieve a single payment by id.
+   *
+   * `GET /v1/payments/:id`
+   */
+  retrieve(id: string, options?: PaymentsRequestOptions): Promise<Payment> {
+    return this.http.get<Payment>(
+      `/v1/payments/${encodeURIComponent(id)}`,
+      withTestMode(options),
+    );
+  }
+
+  /**
+   * List payments with optional filters.
+   *
+   * `GET /v1/payments`
+   */
+  list(
+    params?: ListPaymentsParams,
+    options?: PaymentsRequestOptions,
+  ): Promise<Paginated<Payment>> {
+    return this.http.get<Paginated<Payment>>(
+      '/v1/payments',
+      params ? { ...withTestMode(options), params: { ...params } } : withTestMode(options),
+    );
+  }
+
+  /**
+   * Cancel a payment.
+   *
+   * `POST /v1/payments/:id/cancel`
+   */
+  cancel(id: string, options?: PaymentsRequestOptions): Promise<Payment> {
+    return this.http.post<Payment>(
+      `/v1/payments/${encodeURIComponent(id)}/cancel`,
+      {},
+      withTestMode(options),
+    );
   }
 
   /**
