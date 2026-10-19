@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HttpClient } from './http';
+import { FacilPayValidationError } from './errors';
 
 function createFetch(body: unknown = { ok: true }, headers: Record<string, string> = {}) {
     return vi.fn(async () =>
@@ -130,5 +131,62 @@ describe('HttpClient diagnostics', () => {
         await http.request({ path: '/payments' });
 
         expect(debug).toHaveBeenCalledWith(expect.objectContaining({ path: '/payments' }));
+    });
+});
+describe('HttpClient idempotency', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    function sentIdempotencyKey(fetch: ReturnType<typeof createFetch>): string | null {
+        const [, init] = (fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls[0] ?? [];
+        return new Headers((init as RequestInit | undefined)?.headers).get('Idempotency-Key');
+    }
+
+    it('auto-generates an Idempotency-Key for POST requests without one', async () => {
+        const fetch = createFetch();
+        const http = new HttpClient({ fetch });
+
+        await http.request({ method: 'POST', path: '/payments', body: { amount: 10 } });
+
+        expect(sentIdempotencyKey(fetch)).toMatch(/^[A-Za-z0-9-_.]{1,255}$/);
+    });
+
+    it('sends a single stable key for one logical request', async () => {
+        const fetch = createFetch();
+        const http = new HttpClient({ fetch });
+
+        await http.request({ method: 'POST', path: '/payments', body: {} });
+
+        expect(fetch).toHaveBeenCalledTimes(1);
+        expect(sentIdempotencyKey(fetch)).toBeTruthy();
+    });
+
+    it('forwards a caller-provided key unchanged', async () => {
+        const fetch = createFetch();
+        const http = new HttpClient({ fetch });
+
+        await http.request({ method: 'POST', path: '/payments', body: {}, idempotencyKey: 'my-key_123' });
+
+        expect(sentIdempotencyKey(fetch)).toBe('my-key_123');
+    });
+
+    it('rejects an invalid caller-provided key before sending', async () => {
+        const fetch = createFetch();
+        const http = new HttpClient({ fetch });
+
+        await expect(
+            http.request({ method: 'POST', path: '/payments', body: {}, idempotencyKey: 'not valid!' }),
+        ).rejects.toThrow(FacilPayValidationError);
+        expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it('does not send an Idempotency-Key for GET requests by default', async () => {
+        const fetch = createFetch();
+        const http = new HttpClient({ fetch });
+
+        await http.request({ path: '/payments' });
+
+        expect(sentIdempotencyKey(fetch)).toBeNull();
     });
 });

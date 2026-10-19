@@ -50,3 +50,17 @@ export class FacilPayAPIError extends FacilPayError {
     this.body = options.body;
   }
 }
+
+/**
+ * Thrown when SDK input fails client-side validation (e.g. an invalid
+ * caller-provided `Idempotency-Key`). Thrown before any request is made.
+ */
+export class FacilPayValidationError extends FacilPayError {
+  public readonly code?: string;
+
+  constructor(message: string, options?: { code?: string }) {
+    super(message);
+    this.name = 'FacilPayValidationError';
+    this.code = options?.code;
+  }
+}
