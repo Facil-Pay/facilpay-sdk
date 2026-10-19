@@ -1,22 +1,8 @@
 /**
- * Base error for all FacilPay SDK errors.
+ * Backwards-compatible re-export of the canonical error module.
+ *
+ * All SDK errors live in `./core/errors`; this module re-exports them so
+ * existing imports keep working and `instanceof FacilPayError` behaves
+ * identically no matter which path consumers import from.
  */
-export class FacilPayError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'FacilPayError';
-    Object.setPrototypeOf(this, new.target.prototype);
-  }
-}
-
-/**
- * Thrown when a webhook signature is missing, malformed, or does not match
- * the expected HMAC digest for the provided secret(s).
- */
-export class FacilPaySignatureVerificationError extends FacilPayError {
-  constructor(message: string) {
-    super(message);
-    this.name = 'FacilPaySignatureVerificationError';
-    Object.setPrototypeOf(this, new.target.prototype);
-  }
-}
+export * from './core/errors';
