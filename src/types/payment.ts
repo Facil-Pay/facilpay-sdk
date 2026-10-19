@@ -48,12 +48,7 @@ export interface CreatePaymentDto {
 
 /** Lifecycle status of a payment. */
 export type PaymentStatus =
-  | "pending"
-  | "processing"
-  | "succeeded"
-  | "failed"
-  | "canceled"
-  | "expired";
+  'pending' | 'processing' | 'succeeded' | 'failed' | 'canceled' | 'expired';
 
 /** A payment as returned by the API. */
 export interface Payment {
@@ -84,5 +79,5 @@ export interface ListPaymentsParams {
   page?: number;
   limit?: number;
   sortBy?: string;
-  sortOrder?: "asc" | "desc";
+  sortOrder?: 'asc' | 'desc';
 }

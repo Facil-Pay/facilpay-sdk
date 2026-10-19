@@ -1,13 +1,8 @@
-import type { HttpClient } from "../client";
+import type { HttpClient } from '../client';
 
-export type PaymentLinkSortBy =
-  | "createdAt"
-  | "amount"
-  | "views"
-  | "completions"
-  | "updatedAt";
+export type PaymentLinkSortBy = 'createdAt' | 'amount' | 'views' | 'completions' | 'updatedAt';
 
-export type SortOrder = "asc" | "desc";
+export type SortOrder = 'asc' | 'desc';
 
 export interface PaymentLink {
   id: string;
@@ -74,14 +69,14 @@ export class PaymentLinksResource {
   ) {}
 
   create(params: CreatePaymentLinkParams): Promise<PaymentLink> {
-    return this.http.post<PaymentLink>("/v1/payment-links", {
+    return this.http.post<PaymentLink>('/v1/payment-links', {
       ...params,
       expiresAt: serializeExpiresAt(params.expiresAt),
     });
   }
 
   list(params: ListPaymentLinksParams = {}): Promise<ListPaymentLinksResponse> {
-    return this.http.get<ListPaymentLinksResponse>("/v1/payment-links", {
+    return this.http.get<ListPaymentLinksResponse>('/v1/payment-links', {
       query: params,
     });
   }
@@ -110,6 +105,6 @@ export class PaymentLinksResource {
   }
 
   checkoutUrl(token: string): string {
-    return `${this.checkoutBaseUrl.replace(/\/$/, "")}/pay/${token}`;
+    return `${this.checkoutBaseUrl.replace(/\/$/, '')}/pay/${token}`;
   }
 }

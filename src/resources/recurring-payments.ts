@@ -3,11 +3,7 @@ import { FacilPayError } from '../errors';
 
 export type RecurringInterval = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
-export type RecurringPaymentStatus =
-  | 'active'
-  | 'paused'
-  | 'cancelled'
-  | 'completed';
+export type RecurringPaymentStatus = 'active' | 'paused' | 'cancelled' | 'completed';
 
 export interface CreateRecurringPaymentDto {
   customerId: string;
@@ -65,10 +61,7 @@ const STATE_TRANSITION_MESSAGES: Record<string, string> = {
   'cancel:cancelled': 'Recurring payment is already cancelled.',
 };
 
-function mapStateTransitionError(
-  action: 'pause' | 'resume' | 'cancel',
-  error: unknown,
-): never {
+function mapStateTransitionError(action: 'pause' | 'resume' | 'cancel', error: unknown): never {
   const status = (error as { status?: number })?.status;
   const message = (error as { message?: string })?.message ?? '';
   if (status === 409 || /state|transition|status/i.test(message)) {
@@ -120,9 +113,7 @@ export class RecurringPaymentsResource {
     action: 'pause' | 'resume' | 'cancel',
   ): Promise<RecurringPayment> {
     try {
-      return await this.client.post<RecurringPayment>(
-        `/v1/recurring-payments/${id}/${action}`,
-      );
+      return await this.client.post<RecurringPayment>(`/v1/recurring-payments/${id}/${action}`);
     } catch (error) {
       return mapStateTransitionError(action, error);
     }
