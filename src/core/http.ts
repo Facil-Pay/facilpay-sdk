@@ -1,4 +1,5 @@
 import { FacilPayConnectionError, FacilPayError } from './errors';
+import { detectRuntime } from './version';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
 
@@ -55,16 +56,6 @@ export interface HttpResponse<T> {
 
 export const DEFAULT_BASE_URL = 'https://api.facilpay.io';
 const DEFAULT_TIMEOUT = 30_000;
-
-export function detectRuntime(): string {
-  const g = globalThis as Record<string, unknown>;
-  if (typeof g.Bun !== 'undefined') return 'bun';
-  if (typeof g.Deno !== 'undefined') return 'deno';
-  if (typeof g.EdgeRuntime !== 'undefined') return 'edge';
-  if (typeof g.window !== 'undefined' && typeof g.document !== 'undefined') return 'browser';
-  if (typeof g.process !== 'undefined') return 'node';
-  return 'unknown';
-}
 
 function stripTrailingSlashes(url: string): string {
   return url.replace(/\/+$/, '');
