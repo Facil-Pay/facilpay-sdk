@@ -68,6 +68,11 @@ function parseSignatureHeader(signature: string): ParsedSignature {
     let timestamp: number | undefined;
     for (const part of parts) {
       const [key, value] = part.split("=", 2).map((p) => p.trim());
+      if (value === undefined) {
+        throw new FacilPaySignatureVerificationError(
+          "Malformed X-FacilPay-Signature header.",
+        );
+      }
       if (key === "t") {
         const parsed = Number(value);
         if (!Number.isFinite(parsed)) {
@@ -110,7 +115,7 @@ function hexToBytes(hex: string): Uint8Array {
 function bytesToHex(bytes: Uint8Array): string {
   let hex = "";
   for (let i = 0; i < bytes.length; i++) {
-    hex += bytes[i].toString(16).padStart(2, "0");
+    hex += (bytes[i] ?? 0).toString(16).padStart(2, "0");
   }
   return hex;
 }
@@ -121,7 +126,7 @@ function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
   }
   let diff = 0;
   for (let i = 0; i < a.length; i++) {
-    diff |= a[i] ^ b[i];
+    diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
   }
   return diff === 0;
 }
@@ -161,7 +166,7 @@ async function computeWebHmac(payload: Uint8Array, secret: string): Promise<Uint
     false,
     ["sign"],
   );
-  const digest = await subtle.sign("HMAC", key, payload);
+  const digest = await subtle.sign("HMAC", key, new Uint8Array(payload));
   return new Uint8Array(digest);
 }
 

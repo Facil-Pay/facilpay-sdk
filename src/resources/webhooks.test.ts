@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WebhooksResource } from './webhooks';
-import type { HttpClient } from '../http/client';
+import type { HttpClient } from '../core/http';
 
 function createMockHttp(): HttpClient {
   return {

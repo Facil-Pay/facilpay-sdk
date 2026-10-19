@@ -71,6 +71,12 @@ export type CreateCustomer = Schemas['CreateCustomerDto'];
 /** A paginated list response wrapper. */
 export type Paginated<T> = Schemas['PaginatedResponse'] & { data: T[] };
 
+/** Common pagination query parameters accepted by list endpoints. */
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+}
+
 /** Standard error envelope returned by the API. */
 export type ApiError = Schemas['ApiError'];
 

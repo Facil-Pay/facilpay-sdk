@@ -78,8 +78,8 @@ export class FacilPay {
     );
   }
 
-  request<T>(options: Parameters<HttpClient['request']>[0]): Promise<T> {
-    return this.http.request<T>(options);
+  async request<T>(options: Parameters<HttpClient['request']>[0]): Promise<T> {
+    return (await this.http.request<T>(options)).data;
   }
 
   toString(): string {

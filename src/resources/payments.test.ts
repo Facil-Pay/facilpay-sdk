@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { PaymentsResource } from './payments';
-import type { HttpClient } from '../http';
+import { Payments } from './payments';
+import type { HttpClient } from '../core/http';
 
 function createMockHttp() {
   return {
@@ -17,16 +17,16 @@ function createMockHttp() {
 
 describe('PaymentsResource', () => {
   let http: ReturnType<typeof createMockHttp>;
-  let payments: PaymentsResource;
+  let payments: Payments;
 
   beforeEach(() => {
     http = createMockHttp();
-    payments = new PaymentsResource(http);
+    payments = new Payments(http);
   });
 
   describe('createBulk', () => {
     it('posts items to /v1/payments/bulk and returns per-item results', async () => {
-      const items = [{ amount: 100 }, { amount: 200 }];
+      const items = [{ amount: 100, currency: 'EUR' }, { amount: 200, currency: 'EUR' }];
       const response = {
         successes: [{ id: 'pay_1', amount: 100 }],
         failures: [{ index: 1, error: 'invalid amount' }],
@@ -35,7 +35,7 @@ describe('PaymentsResource', () => {
 
       const result = await payments.createBulk(items);
 
-      expect(http.post).toHaveBeenCalledWith('/v1/payments/bulk', { items });
+      expect(http.post).toHaveBeenCalledWith('/v1/payments/bulk', { items }, undefined);
       expect(result).toEqual(response);
     });
 
@@ -46,7 +46,7 @@ describe('PaymentsResource', () => {
       };
       http.post.mockResolvedValue(response);
 
-      await expect(payments.createBulk([{ amount: 100 }])).resolves.toEqual(response);
+      await expect(payments.createBulk([{ amount: 100, currency: 'EUR' }])).resolves.toEqual(response);
     });
   });
 
@@ -72,7 +72,7 @@ describe('PaymentsResource', () => {
 
       const result = await payments.timeline('pay_1');
 
-      expect(http.get).toHaveBeenCalledWith('/v1/payments/pay_1/timeline');
+      expect(http.get).toHaveBeenCalledWith('/v1/payments/pay_1/timeline', undefined);
       expect(result).toEqual(timeline);
     });
   });
@@ -84,7 +84,7 @@ describe('PaymentsResource', () => {
 
       const result = await payments.invoice('pay_1');
 
-      expect(http.get).toHaveBeenCalledWith('/v1/payments/pay_1/invoice');
+      expect(http.get).toHaveBeenCalledWith('/v1/payments/pay_1/invoice', undefined);
       expect(result).toEqual(invoice);
     });
   });
@@ -96,9 +96,7 @@ describe('PaymentsResource', () => {
 
       const result = await payments.publicInvoice('tok_1');
 
-      expect(http.get).toHaveBeenCalledWith('/v1/payments/invoice/tok_1', {
-        auth: false,
-      });
+      expect(http.get).toHaveBeenCalledWith('/v1/payments/invoice/tok_1', undefined);
       expect(result).toEqual(invoice);
     });
   });

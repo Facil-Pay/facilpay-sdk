@@ -2,12 +2,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HttpClient } from './http';
 
 function createFetch(body: unknown = { ok: true }, headers: Record<string, string> = {}) {
-    return vi.fn(async () =>
-        new Response(JSON.stringify(body), {
-            status: 200,
-            headers: { 'content-type': 'application/json', ...headers },
-        }),
-    ) as unknown as typeof fetch;
+    const mockFetch = vi.fn(
+        async (_url: string | URL | Request, _init?: RequestInit): Promise<Response> =>
+            new Response(JSON.stringify(body), {
+                status: 200,
+                headers: { 'content-type': 'application/json', ...headers },
+            }),
+    );
+    return mockFetch as unknown as typeof globalThis.fetch & Pick<typeof mockFetch, 'mock'>;
 }
 
 describe('HttpClient diagnostics', () => {
@@ -91,12 +93,14 @@ describe('HttpClient diagnostics', () => {
 
     it('logs failed responses with their status and request ID', async () => {
         const logger = { error: vi.fn() };
-        const fetch = vi.fn(async () =>
-            new Response(JSON.stringify({ message: 'failed' }), {
-                status: 400,
-                headers: { 'x-request-id': 'req_failed' },
-            }),
-        ) as unknown as typeof fetch;
+        const mockFetch = vi.fn(
+            async (_url: string | URL | Request, _init?: RequestInit): Promise<Response> =>
+                new Response(JSON.stringify({ message: 'failed' }), {
+                    status: 400,
+                    headers: { 'x-request-id': 'req_failed' },
+                }),
+        );
+        const fetch = mockFetch as unknown as typeof globalThis.fetch & Pick<typeof mockFetch, 'mock'>;
         const http = new HttpClient({ fetch, logger });
 
         await expect(http.request({ path: '/payments' })).rejects.toThrow('Request failed');
@@ -145,7 +149,7 @@ describe('HttpClient idempotency', () => {
         await http.request({ method: 'POST', path: '/payments', body: { amount: 100 } });
 
         expect(fetch).toHaveBeenCalledTimes(1);
-        const [, init] = fetch.mock.calls[0];
+        const [, init] = fetch.mock.calls[0]!;
         const headers = new Headers(init?.headers as HeadersInit);
         expect(headers.get('Idempotency-Key')).toMatch(/^[A-Za-z0-9-_.]{1,255}$/);
     });
@@ -156,7 +160,7 @@ describe('HttpClient idempotency', () => {
 
         await http.request({ method: 'GET', path: '/payments' });
 
-        const [, init] = fetch.mock.calls[0];
+        const [, init] = fetch.mock.calls[0]!;
         const headers = new Headers(init?.headers as HeadersInit);
         expect(headers.get('Idempotency-Key')).toBeNull();
     });
@@ -172,7 +176,7 @@ describe('HttpClient idempotency', () => {
             idempotencyKey: 'user-key_123.abc',
         });
 
-        const [, init] = fetch.mock.calls[0];
+        const [, init] = fetch.mock.calls[0]!;
         const headers = new Headers(init?.headers as HeadersInit);
         expect(headers.get('Idempotency-Key')).toBe('user-key_123.abc');
     });

@@ -1,4 +1,4 @@
-import type { HttpClient } from '../client';
+import type { HttpClient, HttpResponse } from '../core/http';
 import type { ResourceRequestOptions } from './request-options';
 
 /**
@@ -72,54 +72,58 @@ export interface ApiKeyUsage {
 export class ApiKeysResource {
   constructor(private readonly client: HttpClient) {}
 
+  private unwrap<T>(promise: Promise<HttpResponse<T>>): Promise<T> {
+    return promise.then((response) => response.data);
+  }
+
   /**
    * Create a new API key. Requires user JWT auth.
    * The returned `key` is the plaintext secret and is shown only once.
    */
   create(params: CreateApiKeyParams, options?: ResourceRequestOptions): Promise<ApiKey> {
-    return this.client.request<ApiKey>({
+    return this.unwrap(this.client.request<ApiKey>({
       method: 'POST',
       path: '/v1/api-keys',
       body: params,
       ...options,
-    });
+    }));
   }
 
   /** List API keys. Requires user JWT auth. */
   list(options?: ResourceRequestOptions): Promise<ApiKey[]> {
-    return this.client.request<ApiKey[]>({
+    return this.unwrap(this.client.request<ApiKey[]>({
       method: 'GET',
       path: '/v1/api-keys',
       ...options,
-    });
+    }));
   }
 
   /** Retrieve a single API key by id. Requires user JWT auth. */
   retrieve(id: string, options?: ResourceRequestOptions): Promise<ApiKey> {
-    return this.client.request<ApiKey>({
+    return this.unwrap(this.client.request<ApiKey>({
       method: 'GET',
       path: `/v1/api-keys/${encodeURIComponent(id)}`,
       ...options,
-    });
+    }));
   }
 
   /** Update an API key's metadata. Requires user JWT auth. */
   update(id: string, params: UpdateApiKeyParams, options?: ResourceRequestOptions): Promise<ApiKey> {
-    return this.client.request<ApiKey>({
+    return this.unwrap(this.client.request<ApiKey>({
       method: 'PATCH',
       path: `/v1/api-keys/${encodeURIComponent(id)}`,
       body: params,
       ...options,
-    });
+    }));
   }
 
   /** Revoke an API key. Requires user JWT auth. */
   revoke(id: string, options?: ResourceRequestOptions): Promise<ApiKey> {
-    return this.client.request<ApiKey>({
+    return this.unwrap(this.client.request<ApiKey>({
       method: 'DELETE',
       path: `/v1/api-keys/${encodeURIComponent(id)}`,
       ...options,
-    });
+    }));
   }
 
   /**
@@ -127,20 +131,20 @@ export class ApiKeysResource {
    * Requires user JWT auth. The plaintext key is never logged.
    */
   rotate(id: string, options?: ResourceRequestOptions): Promise<ApiKey> {
-    return this.client.request<ApiKey>({
+    return this.unwrap(this.client.request<ApiKey>({
       method: 'POST',
       path: `/v1/api-keys/${encodeURIComponent(id)}/rotate`,
       ...options,
-    });
+    }));
   }
 
   /** Fetch usage statistics for an API key. Requires user JWT auth. */
   usage(id: string, params?: ApiKeyUsageParams, options?: ResourceRequestOptions): Promise<ApiKeyUsage> {
-    return this.client.request<ApiKeyUsage>({
+    return this.unwrap(this.client.request<ApiKeyUsage>({
       method: 'GET',
       path: `/v1/api-keys/${encodeURIComponent(id)}/usage`,
-      query: params,
+      query: params ? { ...params } : undefined,
       ...options,
-    });
+    }));
   }
 }

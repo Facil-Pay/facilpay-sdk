@@ -1,7 +1,9 @@
-import type { Payment } from '../resources/payments';
-import type { Refund } from '../resources/refunds';
 import type { Dispute } from '../resources/disputes';
-import type { MultisigTransaction } from '../resources/transactions';
+import type { StellarTransaction } from '../resources/stellar';
+import type { Payment, Refund } from '../types';
+
+/** A Stellar multisig transaction payload delivered via webhook. */
+export type MultisigTransaction = StellarTransaction;
 
 /**
  * The delivery envelope sent by facilpay-api for every webhook delivery.

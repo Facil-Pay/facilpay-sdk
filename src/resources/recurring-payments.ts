@@ -1,5 +1,5 @@
-import type { HttpClient } from '../client';
-import { FacilPayError } from '../errors';
+import type { HttpClient } from '../core/http';
+import { FacilPayError } from '../core/errors';
 import type { ResourceRequestOptions } from './request-options';
 
 export type RecurringInterval = 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -77,7 +77,7 @@ function mapStateTransitionError(
     const mapped = STATE_TRANSITION_MESSAGES[key];
     throw new FacilPayError(
       mapped ?? message ?? `Cannot ${action} recurring payment in its current state.`,
-      { code: 'recurring_payment_invalid_state', cause: error },
+      { code: 'recurring_payment_invalid_state' },
     );
   }
   throw error;

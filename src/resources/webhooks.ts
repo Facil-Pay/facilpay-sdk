@@ -1,4 +1,4 @@
-import type { HttpClient } from '../http/client';
+import type { HttpClient } from '../core/http';
 import type { Paginated } from '../types';
 import type { ResourceRequestOptions } from './request-options';
 

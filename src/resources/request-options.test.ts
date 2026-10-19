@@ -43,7 +43,7 @@ describe('ResourceRequestOptions', () => {
     await new RecurringPaymentsResource(client as never).retrieve('rp_1', {
       signal: controller.signal,
     });
-    const [, options] = client.get.mock.calls[0] as [string, { signal?: AbortSignal }];
+    const [, options] = client.get.mock.calls[0] as unknown as [string, { signal?: AbortSignal }];
     expect(options?.signal).toBe(controller.signal);
     expect(options?.signal?.aborted).toBe(true);
   });
@@ -77,7 +77,7 @@ describe('ResourceRequestOptions', () => {
     await new WebhooksResource(client as never).sendTest('wh_1', {
       signal: controller.signal,
     });
-    const [, , options] = client.post.mock.calls[0] as [
+    const [, , options] = client.post.mock.calls[0] as unknown as [
       string,
       unknown,
       { signal?: AbortSignal },

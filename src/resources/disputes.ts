@@ -1,4 +1,4 @@
-import type { FacilPayClient } from '../client';
+import type { HttpClient, HttpResponse } from '../core/http';
 import type { Paginated, PaginationParams } from '../types';
 import type { ResourceRequestOptions } from './request-options';
 
@@ -64,7 +64,11 @@ export interface ListDisputesParams extends PaginationParams {
  * evidence or status changes.
  */
 export class DisputesResource {
-  constructor(private readonly client: FacilPayClient) {}
+  constructor(private readonly client: HttpClient) {}
+
+  private unwrap<T>(promise: Promise<HttpResponse<T>>): Promise<T> {
+    return promise.then((response) => response.data);
+  }
 
   /**
    * Open a dispute on a payment.
@@ -76,12 +80,12 @@ export class DisputesResource {
     params: CreateDisputeDto,
     options?: ResourceRequestOptions,
   ): Promise<Dispute> {
-    return this.client.request<Dispute>({
+    return this.unwrap(this.client.request<Dispute>({
       method: 'POST',
       path: `/v1/payments/${encodeURIComponent(paymentId)}/dispute`,
       body: params,
       ...options,
-    });
+    }));
   }
 
   /**
@@ -90,12 +94,12 @@ export class DisputesResource {
    * `GET /v1/disputes`
    */
   list(params?: ListDisputesParams, options?: ResourceRequestOptions): Promise<Paginated<Dispute>> {
-    return this.client.request<Paginated<Dispute>>({
+    return this.unwrap(this.client.request<Paginated<Dispute>>({
       method: 'GET',
       path: '/v1/disputes',
-      query: params,
+      query: params ? { ...params } : undefined,
       ...options,
-    });
+    }));
   }
 
   /**
@@ -104,11 +108,11 @@ export class DisputesResource {
    * `GET /v1/disputes/:id`
    */
   retrieve(id: string, options?: ResourceRequestOptions): Promise<Dispute> {
-    return this.client.request<Dispute>({
+    return this.unwrap(this.client.request<Dispute>({
       method: 'GET',
       path: `/v1/disputes/${encodeURIComponent(id)}`,
       ...options,
-    });
+    }));
   }
 
   /**
@@ -117,11 +121,11 @@ export class DisputesResource {
    * `PATCH /v1/disputes/:id`
    */
   update(id: string, params: UpdateDisputeDto, options?: ResourceRequestOptions): Promise<Dispute> {
-    return this.client.request<Dispute>({
+    return this.unwrap(this.client.request<Dispute>({
       method: 'PATCH',
       path: `/v1/disputes/${encodeURIComponent(id)}`,
       body: params,
       ...options,
-    });
+    }));
   }
 }

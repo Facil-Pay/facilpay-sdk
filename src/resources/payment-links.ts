@@ -1,4 +1,4 @@
-import type { HttpClient } from "../client";
+import type { HttpClient } from "../core/http";
 import type { ResourceRequestOptions } from "./request-options";
 
 export type PaymentLinkSortBy =
@@ -86,7 +86,7 @@ export class PaymentLinksResource {
     options?: ResourceRequestOptions,
   ): Promise<ListPaymentLinksResponse> {
     return this.http.get<ListPaymentLinksResponse>("/v1/payment-links", {
-      query: params,
+      query: { ...params },
       ...options,
     });
   }

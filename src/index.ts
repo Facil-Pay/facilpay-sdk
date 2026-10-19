@@ -3,7 +3,7 @@ import { FacilPayError } from './core/errors';
 import { VERSION } from './core/version';
 
 export { FacilPay, FacilPayError, VERSION };
-export type { FacilPayOptions, Environment } from './client';
+export type { FacilPayOptions, FacilPayEnvironment } from './client';
 export type { Logger } from './core/http';
 
 // Soroban contract bindings live behind the separate `@facilpay/sdk/contracts`

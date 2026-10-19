@@ -29,6 +29,24 @@ export interface RequestOptions<TBody = unknown> {
   timeout?: number;
 }
 
+/**
+ * Per-call options accepted by the {@link HttpClient} convenience helpers
+ * (`get`/`post`/`put`/`patch`/`delete`) and by resource request-option bags.
+ *
+ * Identical to {@link RequestOptions} minus the transport fields the helpers
+ * fill in (`method`, `path`, `body`), plus an optional `params` alias that
+ * helpers forward as the query string.
+ */
+export type BaseRequestOptions = Omit<RequestOptions, 'method' | 'path' | 'body'>;
+
+export interface HelperOptions extends BaseRequestOptions {
+  /**
+   * Query parameters forwarded as the URL query string.
+   * Accepts plain param objects (e.g. `{ page: 2 }`) as well as `query`.
+   */
+  params?: object;
+}
+
 export interface Logger {
   debug?: (...args: (string | object)[]) => unknown;
   info?: (...args: (string | object)[]) => unknown;
@@ -185,10 +203,51 @@ export class HttpClient {
 
   private logRequest(level: 'debug' | 'error', details: Record<string, unknown>): void {
     try {
-      this.logger?.[level]?.(redactForLog(details));
+      this.logger?.[level]?.(redactForLog(details) as string | object);
     } catch {
       // Logging must never change request behavior.
     }
+  }
+
+  /**
+   * Convenience helpers used by resources. Each helper performs a `request`
+   * with the given method and resolves to the response body directly.
+   */
+  get<T>(path: string, options?: HelperOptions): Promise<T> {
+    return this.requestWithBody<T>(path, 'GET', undefined, options);
+  }
+
+  post<T>(path: string, body?: unknown, options?: HelperOptions): Promise<T> {
+    return this.requestWithBody<T>(path, 'POST', body, options);
+  }
+
+  put<T>(path: string, body?: unknown, options?: HelperOptions): Promise<T> {
+    return this.requestWithBody<T>(path, 'PUT', body, options);
+  }
+
+  patch<T>(path: string, body?: unknown, options?: HelperOptions): Promise<T> {
+    return this.requestWithBody<T>(path, 'PATCH', body, options);
+  }
+
+  delete<T>(path: string, options?: HelperOptions): Promise<T> {
+    return this.requestWithBody<T>(path, 'DELETE', undefined, options);
+  }
+
+  private async requestWithBody<T>(
+    path: string,
+    method: HttpMethod,
+    body: unknown,
+    options?: HelperOptions,
+  ): Promise<T> {
+    const { params, query, ...rest } = options ?? {};
+    const response = await this.request<T, unknown>({
+      ...rest,
+      method,
+      path,
+      body,
+      query: (params as QueryParams | undefined) ?? query,
+    });
+    return response.data;
   }
 
   async request<T = unknown, TBody = unknown>(options: RequestOptions<TBody>): Promise<HttpResponse<T>> {

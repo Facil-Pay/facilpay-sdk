@@ -2,9 +2,25 @@
  * Base error for all FacilPay SDK errors.
  */
 export class FacilPayError extends Error {
-  constructor(message: string) {
+  /** Machine-readable error code, when the throw site provides one. */
+  public readonly code?: string;
+
+  constructor(message: string, options?: { code?: string }) {
     super(message);
     this.name = 'FacilPayError';
+    this.code = options?.code;
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
+/**
+ * Thrown when client-side validation rejects parameters before any request
+ * is made (e.g. malformed idempotency keys or invalid resource arguments).
+ */
+export class FacilPayValidationError extends FacilPayError {
+  constructor(message: string, options?: { code?: string }) {
+    super(message, options);
+    this.name = 'FacilPayValidationError';
     Object.setPrototypeOf(this, new.target.prototype);
   }
 }

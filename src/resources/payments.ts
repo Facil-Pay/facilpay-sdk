@@ -1,6 +1,6 @@
-import { FacilPayValidationError } from '../errors';
-import type { HttpClient, RequestOptions } from '../http';
-import type { PagePromise } from '../pagination';
+import { FacilPayValidationError } from '../core/errors';
+import type { BaseRequestOptions, HttpClient } from '../core/http';
+import type { PagePromise } from '../core/pagination';
 import type { Payment, Refund } from '../types';
 
 /**
@@ -134,7 +134,7 @@ export interface GetQrCodeOptions {
 }
 
 /** Per-request options supported by the payments resource. */
-export interface PaymentsRequestOptions extends RequestOptions {
+export interface PaymentsRequestOptions extends BaseRequestOptions {
   /** When true, sends the `x-test-mode: true` header. */
   testMode?: boolean;
 }
@@ -316,6 +316,62 @@ export class Payments {
     params?: GetQrCodeOptions,
     options?: PaymentsRequestOptions,
   ): Promise<string | Uint8Array> {
-    return this.http.get<string | Uint8Array>(`/v1/payments/${encodeURIComponent(id)}/qr`,
+    return this.http.get<string | Uint8Array>(
+      `/v1/payments/${encodeURIComponent(id)}/qr`,
+      params ? { ...withTestMode(options), params: { ...params } } : withTestMode(options),
+    ).then((result) => {
+      if (typeof result === 'object' && result !== null && !(result instanceof Uint8Array)) {
+        const dataUrl = (result as { dataUrl?: unknown }).dataUrl;
+        if (typeof dataUrl === 'string') {
+          return dataUrl;
+        }
+      }
+      return result as string | Uint8Array;
+    });
+  }
+}
 
-/* … truncated 3200 chars — edit only what you need near the top … */
+function withTestMode(options?: PaymentsRequestOptions): BaseRequestOptions | undefined {
+  if (!options?.testMode) {
+    return options;
+  }
+  const { testMode: _testMode, ...rest } = options;
+  return {
+    ...rest,
+    headers: { ...rest.headers, 'x-test-mode': 'true' },
+  };
+}
+
+function validateCreatePaymentParams(params: CreatePaymentParams): void {
+  if (!params || typeof params !== 'object') {
+    throw new FacilPayValidationError('`params` must be an object.');
+  }
+  if (typeof params.amount !== 'number' || !Number.isFinite(params.amount) || params.amount < 0.01) {
+    throw new FacilPayValidationError('`amount` must be a number greater than or equal to 0.01.');
+  }
+  if (typeof params.currency !== 'string' || params.currency.length !== CURRENCY_LENGTH) {
+    throw new FacilPayValidationError('`currency` must be an ISO 4217 code (exactly 3 characters).');
+  }
+  if (params.description !== undefined && params.description.length > MAX_DESCRIPTION_LENGTH) {
+    throw new FacilPayValidationError('`description` must be at most 500 characters.');
+  }
+  if (params.metadata !== undefined) {
+    const entries = Object.entries(params.metadata);
+    if (entries.length > MAX_METADATA_ENTRIES) {
+      throw new FacilPayValidationError('`metadata` must contain at most 20 entries.');
+    }
+    for (const [, value] of entries) {
+      if (value.length > MAX_METADATA_VALUE_LENGTH) {
+        throw new FacilPayValidationError('`metadata` values must be at most 500 characters.');
+      }
+    }
+  }
+}
+
+function validateRefundPaymentParams(params?: RefundPaymentDto): void {
+  if (params?.amount !== undefined) {
+    if (typeof params.amount !== 'number' || !Number.isFinite(params.amount) || params.amount <= 0) {
+      throw new FacilPayValidationError('`amount` must be a number greater than 0.');
+    }
+  }
+}
