@@ -1,4 +1,5 @@
 import type { HttpClient } from '../http/client';
+import type { Paginated } from '../types';
 import type { ResourceRequestOptions } from './request-options';
 
 /**
@@ -64,6 +65,27 @@ export interface WebhookDeliveryRetryResult {
   status: string;
 }
 
+/** A single webhook delivery attempt. */
+export interface WebhookDelivery {
+  id: string;
+  webhookId: string;
+  event: WebhookEvent;
+  status: string;
+  attempts: number;
+  lastAttemptAt?: string;
+  nextRetryAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Parameters for listing webhook deliveries. */
+export interface ListWebhookDeliveriesParams {
+  page?: number;
+  limit?: number;
+  status?: string;
+  event?: WebhookEvent;
+}
+
 /**
  * Webhook endpoints resource.
  *
@@ -85,6 +107,23 @@ export class WebhooksResource {
   /** List all registered webhook endpoints. */
   list(options?: ResourceRequestOptions): Promise<WebhookEndpoint[]> {
     return this.http.get<WebhookEndpoint[]>('/v1/webhooks', options);
+  }
+
+  /** Retrieve a single webhook endpoint by id. */
+  retrieve(id: string, options?: ResourceRequestOptions): Promise<WebhookEndpoint> {
+    return this.http.get<WebhookEndpoint>(`/v1/webhooks/${id}`, options);
+  }
+
+  /** List delivery attempts for a webhook endpoint (paginated). */
+  listDeliveries(
+    id: string,
+    params?: ListWebhookDeliveriesParams,
+    options?: ResourceRequestOptions,
+  ): Promise<Paginated<WebhookDelivery>> {
+    return this.http.get<Paginated<WebhookDelivery>>(`/v1/webhooks/${id}/deliveries`, {
+      params,
+      ...options,
+    });
   }
 
   /** Update a webhook endpoint's URL, subscribed events, or active state. */
