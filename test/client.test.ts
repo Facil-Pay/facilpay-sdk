@@ -72,4 +72,69 @@ describe('FacilPay API key authentication', () => {
     expect(JSON.stringify(client)).not.toContain('fp_live_supersecret');
     expect(inspect(client)).not.toContain('fp_live_supersecret');
   });
+
+  it('prefers an explicit apiKey over FACILPAY_API_KEY', () => {
+    process.env.FACILPAY_API_KEY = 'fp_test_from_env';
+    const client = new FacilPay({ apiKey: 'fp_live_from_options' });
+    expect(client.environment).toBe('live');
+  });
+
+  it('falls back to FACILPAY_API_KEY when the option is an empty string', () => {
+    process.env.FACILPAY_API_KEY = 'fp_test_from_env';
+    const client = new FacilPay({ apiKey: '' });
+    expect(client.environment).toBe('test');
+  });
+
+  it('mentions FACILPAY_API_KEY in the missing-key error', () => {
+    expect(() => new FacilPay({} as never)).toThrow(/FACILPAY_API_KEY/);
+  });
+
+  it('rejects keys with an unknown prefix', () => {
+    expect(() => new FacilPay({ apiKey: 'fp_unknown_123' })).toThrow(FacilPayError);
+  });
+
+  it('warns exactly once when a live key is used in a browser', () => {
+    const g = globalThis as Record<string, unknown>;
+    const hadWindow = 'window' in g;
+    const prevWindow = g.window;
+    g.window = {};
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      new FacilPay({ apiKey: 'fp_live_browserkey' });
+      expect(warn).toHaveBeenCalledTimes(1);
+    } finally {
+      if (hadWindow) {
+        g.window = prevWindow;
+      } else {
+        delete g.window;
+      }
+    }
+  });
+
+  it('does not warn in a browser for a test key', () => {
+    const g = globalThis as Record<string, unknown>;
+    const hadWindow = 'window' in g;
+    const prevWindow = g.window;
+    g.window = {};
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      new FacilPay({ apiKey: 'fp_test_browserkey' });
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      if (hadWindow) {
+        g.window = prevWindow;
+      } else {
+        delete g.window;
+      }
+    }
+  });
+
+  it('does not leak the API key via toString() or toJSON()', () => {
+    const client = new FacilPay({ apiKey: 'fp_live_supersecret' });
+
+    expect(client.toString()).not.toContain('fp_live_supersecret');
+    expect(client.toString()).toContain('live');
+    expect(JSON.stringify(client.toJSON())).not.toContain('fp_live_supersecret');
+    expect(client.toJSON()).toEqual({ environment: 'live', isTestMode: false });
+  });
 });
