@@ -1,4 +1,4 @@
-import { FacilPayConnectionError, FacilPayError } from './errors';
+import { FacilPayConnectionError, FacilPayError, createApiError } from './errors';
 import { detectRuntime, VERSION, clientUserAgent } from './version';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
@@ -104,6 +104,13 @@ function responseHeadersToObject(headers: Headers): Record<string, string> {
     result[key] = value;
   });
   return result;
+}
+
+function parseRetryAfter(headers: Headers): number | undefined {
+  const raw = headers.get('retry-after');
+  if (raw === null) return undefined;
+  const seconds = Number(raw);
+  return Number.isFinite(seconds) ? seconds : undefined;
 }
 
 export function serializeQuery(query?: QueryParams): string {
@@ -231,13 +238,12 @@ export class HttpClient {
       responseBody = await this.parseBody(response, responseType);
 
       if (!response.ok) {
-        throw new FacilPayError(
-          `Request failed with status ${response.status}`,
-          response.status,
-          responseBody,
+        throw createApiError(response.status, {
+          body: responseBody,
           requestId,
           correlationId,
-        );
+          retryAfter: parseRetryAfter(response.headers),
+        });
       }
 
       this.logRequest('debug', {
