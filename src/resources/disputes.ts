@@ -1,5 +1,6 @@
 import type { FacilPayClient } from '../client';
 import type { Paginated, PaginationParams } from '../types';
+import type { ResourceRequestOptions } from './request-options';
 
 /**
  * Status of a dispute as returned by the FacilPay API.
@@ -70,11 +71,16 @@ export class DisputesResource {
    *
    * `POST /v1/payments/:id/dispute`
    */
-  create(paymentId: string, params: CreateDisputeDto): Promise<Dispute> {
+  create(
+    paymentId: string,
+    params: CreateDisputeDto,
+    options?: ResourceRequestOptions,
+  ): Promise<Dispute> {
     return this.client.request<Dispute>({
       method: 'POST',
       path: `/v1/payments/${encodeURIComponent(paymentId)}/dispute`,
       body: params,
+      ...options,
     });
   }
 
@@ -83,11 +89,12 @@ export class DisputesResource {
    *
    * `GET /v1/disputes`
    */
-  list(params?: ListDisputesParams): Promise<Paginated<Dispute>> {
+  list(params?: ListDisputesParams, options?: ResourceRequestOptions): Promise<Paginated<Dispute>> {
     return this.client.request<Paginated<Dispute>>({
       method: 'GET',
       path: '/v1/disputes',
       query: params,
+      ...options,
     });
   }
 
@@ -96,10 +103,11 @@ export class DisputesResource {
    *
    * `GET /v1/disputes/:id`
    */
-  retrieve(id: string): Promise<Dispute> {
+  retrieve(id: string, options?: ResourceRequestOptions): Promise<Dispute> {
     return this.client.request<Dispute>({
       method: 'GET',
       path: `/v1/disputes/${encodeURIComponent(id)}`,
+      ...options,
     });
   }
 
@@ -108,11 +116,12 @@ export class DisputesResource {
    *
    * `PATCH /v1/disputes/:id`
    */
-  update(id: string, params: UpdateDisputeDto): Promise<Dispute> {
+  update(id: string, params: UpdateDisputeDto, options?: ResourceRequestOptions): Promise<Dispute> {
     return this.client.request<Dispute>({
       method: 'PATCH',
       path: `/v1/disputes/${encodeURIComponent(id)}`,
       body: params,
+      ...options,
     });
   }
 }

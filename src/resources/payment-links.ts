@@ -1,4 +1,5 @@
 import type { HttpClient } from "../client";
+import type { ResourceRequestOptions } from "./request-options";
 
 export type PaymentLinkSortBy =
   | "createdAt"
@@ -73,40 +74,52 @@ export class PaymentLinksResource {
     private readonly checkoutBaseUrl: string,
   ) {}
 
-  create(params: CreatePaymentLinkParams): Promise<PaymentLink> {
+  create(params: CreatePaymentLinkParams, options?: ResourceRequestOptions): Promise<PaymentLink> {
     return this.http.post<PaymentLink>("/v1/payment-links", {
       ...params,
       expiresAt: serializeExpiresAt(params.expiresAt),
-    });
+    }, options);
   }
 
-  list(params: ListPaymentLinksParams = {}): Promise<ListPaymentLinksResponse> {
+  list(
+    params: ListPaymentLinksParams = {},
+    options?: ResourceRequestOptions,
+  ): Promise<ListPaymentLinksResponse> {
     return this.http.get<ListPaymentLinksResponse>("/v1/payment-links", {
       query: params,
+      ...options,
     });
   }
 
-  retrieve(token: string): Promise<PaymentLink> {
-    return this.http.get<PaymentLink>(`/v1/payment-links/${token}`);
+  retrieve(token: string, options?: ResourceRequestOptions): Promise<PaymentLink> {
+    return this.http.get<PaymentLink>(`/v1/payment-links/${token}`, options);
   }
 
-  update(id: string, params: UpdatePaymentLinkParams): Promise<PaymentLink> {
+  update(
+    id: string,
+    params: UpdatePaymentLinkParams,
+    options?: ResourceRequestOptions,
+  ): Promise<PaymentLink> {
     return this.http.patch<PaymentLink>(`/v1/payment-links/${id}`, {
       ...params,
       expiresAt: serializeExpiresAt(params.expiresAt),
-    });
+    }, options);
   }
 
-  deactivate(id: string): Promise<PaymentLink> {
-    return this.http.delete<PaymentLink>(`/v1/payment-links/${id}`);
+  deactivate(id: string, options?: ResourceRequestOptions): Promise<PaymentLink> {
+    return this.http.delete<PaymentLink>(`/v1/payment-links/${id}`, options);
   }
 
-  redeem(token: string, params: RedeemPaymentLinkParams = {}): Promise<PaymentLink> {
-    return this.http.post<PaymentLink>(`/v1/payment-links/${token}/redeem`, params);
+  redeem(
+    token: string,
+    params: RedeemPaymentLinkParams = {},
+    options?: ResourceRequestOptions,
+  ): Promise<PaymentLink> {
+    return this.http.post<PaymentLink>(`/v1/payment-links/${token}/redeem`, params, options);
   }
 
-  getQrCode(token: string): Promise<QrCodeResponse> {
-    return this.http.get<QrCodeResponse>(`/v1/payment-links/${token}/qr`);
+  getQrCode(token: string, options?: ResourceRequestOptions): Promise<QrCodeResponse> {
+    return this.http.get<QrCodeResponse>(`/v1/payment-links/${token}/qr`, options);
   }
 
   checkoutUrl(token: string): string {
