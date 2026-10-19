@@ -162,7 +162,7 @@ export class HttpClient {
       ...this.defaultHeaders,
       ...extra,
     };
-    if (this.apiKey) headers.Authorization = `Bearer ${this.apiKey}`;
+    if (this.apiKey) headers.Authorization = `ApiKey ${this.apiKey}`;
     if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
     if (correlationId) {
       for (const key of Object.keys(headers)) {

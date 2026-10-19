@@ -58,10 +58,16 @@ export class FacilPay {
       this.#warnLiveKeyInBrowser();
     }
 
+    // The raw apiKey must not reach HttpClient: it would set its own
+    // Authorization header and overwrite the `ApiKey` scheme below.
+    // Auth is set here, in exactly one place.
+    const httpOptions: HttpClientOptions = { ...options };
+    delete httpOptions.apiKey;
+
     this.http = new HttpClient({
-      ...options,
+      ...httpOptions,
       headers: {
-        ...options.headers,
+        ...httpOptions.headers,
         Authorization: `ApiKey ${apiKey}`,
       },
     });
