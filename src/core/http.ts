@@ -1,5 +1,5 @@
 import { FacilPayConnectionError, FacilPayError } from './errors';
-import { detectRuntime } from './version';
+import { detectRuntime, VERSION, clientUserAgent } from './version';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
 
@@ -141,7 +141,7 @@ export class HttpClient {
 
   constructor(options: HttpClientOptions = {}) {
     this.baseUrl = stripTrailingSlashes(options.baseUrl ?? DEFAULT_BASE_URL);
-    this.version = options.version ?? '0.0.0';
+    this.version = options.version ?? VERSION;
     this.timeout = options.timeout ?? DEFAULT_TIMEOUT;
     this.apiKey = options.apiKey;
     this.fetchImpl = options.fetch ?? globalThis.fetch.bind(globalThis);
@@ -157,8 +157,8 @@ export class HttpClient {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       Accept: 'application/json',
-      'User-Agent': `facilpay-sdk-js/${this.version} (${detectRuntime()})`,
-      'X-FacilPay-Client': `facilpay-sdk-js/${this.version} (${detectRuntime()})`,
+      'User-Agent': clientUserAgent(this.version),
+      'X-FacilPay-Client': clientUserAgent(this.version),
       ...this.defaultHeaders,
       ...extra,
     };
