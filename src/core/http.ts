@@ -1,4 +1,4 @@
-import { FacilPayConnectionError, FacilPayError } from './errors';
+import { FacilPayAPIError, FacilPayConnectionError, FacilPayError } from './errors';
 import { generateIdempotencyKey, validateIdempotencyKey } from './idempotency';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
@@ -124,6 +124,23 @@ function getEnvironmentLogger(): Logger | undefined {
   const g = globalThis as typeof globalThis & { process?: { env?: Record<string, string | undefined> } };
   if (detectRuntime() !== 'node' || g.process?.env?.FACILPAY_LOG !== 'debug') return undefined;
   return console;
+}
+
+/**
+ * Resolve the message for a failed response, preferring the API's own
+ * `message` field when the body carries one.
+ */
+function extractErrorMessage(body: unknown, status: number): string {
+  if (typeof body === 'string' && body.length > 0) {
+    return body;
+  }
+  if (body !== null && typeof body === 'object') {
+    const message = (body as { message?: unknown }).message;
+    if (typeof message === 'string' && message.length > 0) {
+      return message;
+    }
+  }
+  return `Request failed with status ${status}`;
 }
 
 function responseHeadersToObject(headers: Headers): Record<string, string> {
@@ -310,13 +327,12 @@ export class HttpClient {
       responseBody = await this.parseBody(response, responseType);
 
       if (!response.ok) {
-        throw new FacilPayError(
-          `Request failed with status ${response.status}`,
-          response.status,
-          responseBody,
+        throw new FacilPayAPIError(extractErrorMessage(responseBody, response.status), {
+          status: response.status,
+          body: responseBody,
           requestId,
           correlationId,
-        );
+        });
       }
 
       this.logRequest('debug', {

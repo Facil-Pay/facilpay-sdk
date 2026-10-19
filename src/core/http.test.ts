@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { FacilPayAPIError } from './errors';
 import { HttpClient } from './http';
 
 function createFetch(body: unknown = { ok: true }, headers: Record<string, string> = {}) {
@@ -91,7 +92,7 @@ describe('HttpClient diagnostics', () => {
         );
     });
 
-    it('logs failed responses with their status and request ID', async () => {
+    it('throws FacilPayAPIError with status, body, and request ID on failure', async () => {
         const logger = { error: vi.fn() };
         const mockFetch = vi.fn(
             async (_url: string | URL | Request, _init?: RequestInit): Promise<Response> =>
@@ -103,11 +104,38 @@ describe('HttpClient diagnostics', () => {
         const fetch = mockFetch as unknown as typeof globalThis.fetch & Pick<typeof mockFetch, 'mock'>;
         const http = new HttpClient({ fetch, logger });
 
-        await expect(http.request({ path: '/payments' })).rejects.toThrow('Request failed');
+        const error = await http.request({ path: '/payments' }).catch((err) => err);
+
+        expect(error).toBeInstanceOf(FacilPayAPIError);
+        expect(error.message).toBe('failed');
+        expect(error.status).toBe(400);
+        expect(error.body).toEqual({ message: 'failed' });
+        expect(error.requestId).toBe('req_failed');
 
         expect(logger.error).toHaveBeenCalledWith(
             expect.objectContaining({ status: 400, requestId: 'req_failed', attempt: 1 }),
         );
+    });
+
+    it('falls back to a status message and captures the correlation ID', async () => {
+        const mockFetch = vi.fn(
+            async (_url: string | URL | Request, _init?: RequestInit): Promise<Response> =>
+                new Response('', {
+                    status: 500,
+                    headers: { 'x-request-id': 'req_500', 'x-correlation-id': 'corr_1' },
+                }),
+        );
+        const fetch = mockFetch as unknown as typeof globalThis.fetch & Pick<typeof mockFetch, 'mock'>;
+        const http = new HttpClient({ fetch });
+
+        const error = await http.request({ path: '/payments' }).catch((err) => err);
+
+        expect(error).toBeInstanceOf(FacilPayAPIError);
+        expect(error.message).toBe('Request failed with status 500');
+        expect(error.status).toBe(500);
+        expect(error.body).toBeUndefined();
+        expect(error.requestId).toBe('req_500');
+        expect(error.correlationId).toBe('corr_1');
     });
 
     it('does not log when neither a logger nor the environment shortcut is configured', async () => {
