@@ -1,4 +1,5 @@
-import type { HttpClient } from '../http/client';
+import type { HttpClient } from '../core/http';
+import type { ResourceRequestOptions } from './request-options';
 
 /**
  * Supported webhook event names.
@@ -77,28 +78,55 @@ export class WebhooksResource {
    * The returned `secret` (`whsec_…`) is only returned in full here and after
    * rotation. Store it immediately — it cannot be retrieved again afterwards.
    */
-  create(params: CreateWebhookParams): Promise<WebhookEndpoint> {
-    return this.http.post<WebhookEndpoint>('/v1/webhooks', params);
+  create(params: CreateWebhookParams, options?: ResourceRequestOptions): Promise<WebhookEndpoint> {
+    return this.http.request<WebhookEndpoint>({
+      method: 'POST',
+      path: '/v1/webhooks',
+      body: params,
+      ...options,
+    });
   }
 
   /** List all registered webhook endpoints. */
-  list(): Promise<WebhookEndpoint[]> {
-    return this.http.get<WebhookEndpoint[]>('/v1/webhooks');
+  list(options?: ResourceRequestOptions): Promise<WebhookEndpoint[]> {
+    return this.http.request<WebhookEndpoint[]>({
+      method: 'GET',
+      path: '/v1/webhooks',
+      ...options,
+    });
   }
 
   /** Update a webhook endpoint's URL, subscribed events, or active state. */
-  update(id: string, params: UpdateWebhookParams): Promise<WebhookEndpoint> {
-    return this.http.patch<WebhookEndpoint>(`/v1/webhooks/${id}`, params);
+  update(
+    id: string,
+    params: UpdateWebhookParams,
+    options?: ResourceRequestOptions,
+  ): Promise<WebhookEndpoint> {
+    return this.http.request<WebhookEndpoint>({
+      method: 'PATCH',
+      path: `/v1/webhooks/${id}`,
+      body: params,
+      ...options,
+    });
   }
 
   /** Delete a webhook endpoint. */
-  delete(id: string): Promise<void> {
-    return this.http.delete<void>(`/v1/webhooks/${id}`);
+  delete(id: string, options?: ResourceRequestOptions): Promise<void> {
+    return this.http.request<void>({
+      method: 'DELETE',
+      path: `/v1/webhooks/${id}`,
+      ...options,
+    });
   }
 
   /** Send a test delivery to a webhook endpoint. */
-  sendTest(id: string): Promise<WebhookTestResult> {
-    return this.http.post<WebhookTestResult>(`/v1/webhooks/${id}/test`, {});
+  sendTest(id: string, options?: ResourceRequestOptions): Promise<WebhookTestResult> {
+    return this.http.request<WebhookTestResult>({
+      method: 'POST',
+      path: `/v1/webhooks/${id}/test`,
+      body: {},
+      ...options,
+    });
   }
 
   /**
@@ -107,15 +135,25 @@ export class WebhooksResource {
    * The new `secret` (`whsec_…`) is only returned in full here. Store it
    * immediately — it cannot be retrieved again afterwards.
    */
-  rotateSecret(id: string): Promise<WebhookEndpoint> {
-    return this.http.post<WebhookEndpoint>(`/v1/webhooks/${id}/rotate-secret`, {});
+  rotateSecret(id: string, options?: ResourceRequestOptions): Promise<WebhookEndpoint> {
+    return this.http.request<WebhookEndpoint>({
+      method: 'POST',
+      path: `/v1/webhooks/${id}/rotate-secret`,
+      body: {},
+      ...options,
+    });
   }
 
   /** Retry a previously failed webhook delivery. */
-  retryDelivery(deliveryId: string): Promise<WebhookDeliveryRetryResult> {
-    return this.http.post<WebhookDeliveryRetryResult>(
-      `/v1/webhooks/deliveries/${deliveryId}/retry`,
-      {},
-    );
+  retryDelivery(
+    deliveryId: string,
+    options?: ResourceRequestOptions,
+  ): Promise<WebhookDeliveryRetryResult> {
+    return this.http.request<WebhookDeliveryRetryResult>({
+      method: 'POST',
+      path: `/v1/webhooks/deliveries/${deliveryId}/retry`,
+      body: {},
+      ...options,
+    });
   }
 }

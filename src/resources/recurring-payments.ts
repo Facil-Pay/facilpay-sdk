@@ -1,5 +1,6 @@
-import type { HttpClient } from '../client';
+import type { HttpClient } from '../core/http';
 import { FacilPayError } from '../errors';
+import type { ResourceRequestOptions } from './request-options';
 
 export type RecurringInterval = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
@@ -85,44 +86,71 @@ function mapStateTransitionError(
 export class RecurringPaymentsResource {
   constructor(private readonly client: HttpClient) {}
 
-  create(params: CreateRecurringPaymentDto): Promise<RecurringPayment> {
-    return this.client.post<RecurringPayment>('/v1/recurring-payments', params);
-  }
-
-  list(params?: ListRecurringPaymentsParams): Promise<ListRecurringPaymentsResponse> {
-    return this.client.get<ListRecurringPaymentsResponse>('/v1/recurring-payments', {
-      params,
+  create(params: CreateRecurringPaymentDto, options?: ResourceRequestOptions): Promise<RecurringPayment> {
+    return this.client.request<RecurringPayment>({
+      method: 'POST',
+      path: '/v1/recurring-payments',
+      body: params,
+      ...options,
     });
   }
 
-  retrieve(id: string): Promise<RecurringPayment> {
-    return this.client.get<RecurringPayment>(`/v1/recurring-payments/${id}`);
+  list(
+    params?: ListRecurringPaymentsParams,
+    options?: ResourceRequestOptions,
+  ): Promise<ListRecurringPaymentsResponse> {
+    return this.client.request<ListRecurringPaymentsResponse>({
+      method: 'GET',
+      path: '/v1/recurring-payments',
+      query: params,
+      ...options,
+    });
   }
 
-  update(id: string, params: UpdateRecurringPaymentDto): Promise<RecurringPayment> {
-    return this.client.patch<RecurringPayment>(`/v1/recurring-payments/${id}`, params);
+  retrieve(id: string, options?: ResourceRequestOptions): Promise<RecurringPayment> {
+    return this.client.request<RecurringPayment>({
+      method: 'GET',
+      path: `/v1/recurring-payments/${id}`,
+      ...options,
+    });
   }
 
-  pause(id: string): Promise<RecurringPayment> {
-    return this.transition(id, 'pause');
+  update(
+    id: string,
+    params: UpdateRecurringPaymentDto,
+    options?: ResourceRequestOptions,
+  ): Promise<RecurringPayment> {
+    return this.client.request<RecurringPayment>({
+      method: 'PATCH',
+      path: `/v1/recurring-payments/${id}`,
+      body: params,
+      ...options,
+    });
   }
 
-  resume(id: string): Promise<RecurringPayment> {
-    return this.transition(id, 'resume');
+  pause(id: string, options?: ResourceRequestOptions): Promise<RecurringPayment> {
+    return this.transition(id, 'pause', options);
   }
 
-  cancel(id: string): Promise<RecurringPayment> {
-    return this.transition(id, 'cancel');
+  resume(id: string, options?: ResourceRequestOptions): Promise<RecurringPayment> {
+    return this.transition(id, 'resume', options);
+  }
+
+  cancel(id: string, options?: ResourceRequestOptions): Promise<RecurringPayment> {
+    return this.transition(id, 'cancel', options);
   }
 
   private async transition(
     id: string,
     action: 'pause' | 'resume' | 'cancel',
+    options?: ResourceRequestOptions,
   ): Promise<RecurringPayment> {
     try {
-      return await this.client.post<RecurringPayment>(
-        `/v1/recurring-payments/${id}/${action}`,
-      );
+      return await this.client.request<RecurringPayment>({
+        method: 'POST',
+        path: `/v1/recurring-payments/${id}/${action}`,
+        ...options,
+      });
     } catch (error) {
       return mapStateTransitionError(action, error);
     }
