@@ -58,8 +58,11 @@ export class FacilPay {
       this.#warnLiveKeyInBrowser();
     }
 
+    // Strip the raw key before delegating: HttpClient would otherwise turn it
+    // into its own `Bearer` Authorization header and overwrite ours below.
+    const { apiKey: _consumed, ...httpOptions } = options;
     this.http = new HttpClient({
-      ...options,
+      ...httpOptions,
       headers: {
         ...options.headers,
         Authorization: `ApiKey ${apiKey}`,
@@ -84,6 +87,11 @@ export class FacilPay {
 
   toString(): string {
     return `FacilPay { environment: '${this.environment}' }`;
+  }
+
+  /** Prevents `util.inspect` from leaking the key or auth headers. */
+  [Symbol.for('nodejs.util.inspect.custom')](): string {
+    return this.toString();
   }
 
   toJSON(): { environment: FacilPayEnvironment; isTestMode: boolean } {
