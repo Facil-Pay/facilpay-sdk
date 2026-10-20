@@ -1,5 +1,5 @@
 import type { HttpClient } from '../core/http';
-import type { Paginated } from '../types';
+import type { PageEnvelope } from '../core/pagination';
 import type { ResourceRequestOptions } from './request-options';
 import {
   constructEvent,
@@ -77,14 +77,13 @@ export interface WebhookDelivery {
   webhookId: string;
   event: WebhookEvent;
   status: string;
-  attempts: number;
-  lastAttemptAt?: string;
-  nextRetryAt?: string | null;
+  statusCode?: number;
+  attempts?: number;
   createdAt: string;
   updatedAt: string;
 }
 
-/** Parameters for listing webhook deliveries. */
+/** Filters accepted by {@link WebhooksResource.listDeliveries}. */
 export interface ListWebhookDeliveriesParams {
   page?: number;
   limit?: number;
@@ -107,27 +106,46 @@ export class WebhooksResource {
    * rotation. Store it immediately — it cannot be retrieved again afterwards.
    */
   create(params: CreateWebhookParams, options?: ResourceRequestOptions): Promise<WebhookEndpoint> {
-    return this.http.post<WebhookEndpoint>('/v1/webhooks', params, options);
+    return this.http.request<WebhookEndpoint>({
+      method: 'POST',
+      path: '/v1/webhooks',
+      body: params,
+      ...options,
+    });
   }
 
   /** List all registered webhook endpoints. */
   list(options?: ResourceRequestOptions): Promise<WebhookEndpoint[]> {
-    return this.http.get<WebhookEndpoint[]>('/v1/webhooks', options);
+    return this.http.request<WebhookEndpoint[]>({
+      method: 'GET',
+      path: '/v1/webhooks',
+      ...options,
+    });
   }
 
-  /** Retrieve a single webhook endpoint by id. */
+  /** Fetch a single webhook endpoint by id. */
   retrieve(id: string, options?: ResourceRequestOptions): Promise<WebhookEndpoint> {
-    return this.http.get<WebhookEndpoint>(`/v1/webhooks/${id}`, options);
+    return this.http.request<WebhookEndpoint>({
+      method: 'GET',
+      path: `/v1/webhooks/${id}`,
+      ...options,
+    });
   }
 
-  /** List delivery attempts for a webhook endpoint (paginated). */
+  /**
+   * List the delivery attempts of a webhook endpoint (paginated).
+   *
+   * Use this to find a `deliveryId` for {@link retryDelivery}.
+   */
   listDeliveries(
     id: string,
     params?: ListWebhookDeliveriesParams,
     options?: ResourceRequestOptions,
-  ): Promise<Paginated<WebhookDelivery>> {
-    return this.http.get<Paginated<WebhookDelivery>>(`/v1/webhooks/${id}/deliveries`, {
-      params,
+  ): Promise<PageEnvelope<WebhookDelivery>> {
+    return this.http.request<PageEnvelope<WebhookDelivery>>({
+      method: 'GET',
+      path: `/v1/webhooks/${id}/deliveries`,
+      query: params,
       ...options,
     });
   }
@@ -138,17 +156,31 @@ export class WebhooksResource {
     params: UpdateWebhookParams,
     options?: ResourceRequestOptions,
   ): Promise<WebhookEndpoint> {
-    return this.http.patch<WebhookEndpoint>(`/v1/webhooks/${id}`, params, options);
+    return this.http.request<WebhookEndpoint>({
+      method: 'PATCH',
+      path: `/v1/webhooks/${id}`,
+      body: params,
+      ...options,
+    });
   }
 
   /** Delete a webhook endpoint. */
   delete(id: string, options?: ResourceRequestOptions): Promise<void> {
-    return this.http.delete<void>(`/v1/webhooks/${id}`, options);
+    return this.http.request<void>({
+      method: 'DELETE',
+      path: `/v1/webhooks/${id}`,
+      ...options,
+    });
   }
 
   /** Send a test delivery to a webhook endpoint. */
   sendTest(id: string, options?: ResourceRequestOptions): Promise<WebhookTestResult> {
-    return this.http.post<WebhookTestResult>(`/v1/webhooks/${id}/test`, {}, options);
+    return this.http.request<WebhookTestResult>({
+      method: 'POST',
+      path: `/v1/webhooks/${id}/test`,
+      body: {},
+      ...options,
+    });
   }
 
   /**
@@ -158,16 +190,25 @@ export class WebhooksResource {
    * immediately — it cannot be retrieved again afterwards.
    */
   rotateSecret(id: string, options?: ResourceRequestOptions): Promise<WebhookEndpoint> {
-    return this.http.post<WebhookEndpoint>(`/v1/webhooks/${id}/rotate-secret`, {}, options);
+    return this.http.request<WebhookEndpoint>({
+      method: 'POST',
+      path: `/v1/webhooks/${id}/rotate-secret`,
+      body: {},
+      ...options,
+    });
   }
 
   /** Retry a previously failed webhook delivery. */
-  retryDelivery(deliveryId: string, options?: ResourceRequestOptions): Promise<WebhookDeliveryRetryResult> {
-    return this.http.post<WebhookDeliveryRetryResult>(
-      `/v1/webhooks/deliveries/${deliveryId}/retry`,
-      {},
-      options,
-    );
+  retryDelivery(
+    deliveryId: string,
+    options?: ResourceRequestOptions,
+  ): Promise<WebhookDeliveryRetryResult> {
+    return this.http.request<WebhookDeliveryRetryResult>({
+      method: 'POST',
+      path: `/v1/webhooks/deliveries/${deliveryId}/retry`,
+      body: {},
+      ...options,
+    });
   }
 
   /**

@@ -1,7 +1,6 @@
-import { FacilPayValidationError } from '../core/errors';
-import type { BaseRequestOptions, HttpClient } from '../core/http';
-import type { PagePromise } from '../core/pagination';
-import type { Paginated, Payment, Refund } from '../types';
+import { FacilPayValidationError } from '../errors';
+import type { HttpClient, RequestOptions } from '../http';
+import type { Payment, Refund } from '../types';
 
 /**
  * Parameters accepted by {@link Payments.create}.
@@ -138,11 +137,6 @@ export interface PaymentsRequestOptions extends BaseRequestOptions {
   /** When true, sends the `x-test-mode: true` header. */
   testMode?: boolean;
 }
-
-const MAX_METADATA_ENTRIES = 20;
-const MAX_METADATA_VALUE_LENGTH = 500;
-const MAX_DESCRIPTION_LENGTH = 500;
-const CURRENCY_LENGTH = 3;
 
 /**
  * Payments resource.
@@ -356,62 +350,105 @@ export class Payments {
     params?: GetQrCodeOptions,
     options?: PaymentsRequestOptions,
   ): Promise<string | Uint8Array> {
-    return this.http.get<string | Uint8Array>(
-      `/v1/payments/${encodeURIComponent(id)}/qr`,
-      params ? { ...withTestMode(options), params: { ...params } } : withTestMode(options),
-    ).then((result) => {
-      if (typeof result === 'object' && result !== null && !(result instanceof Uint8Array)) {
-        const dataUrl = (result as { dataUrl?: unknown }).dataUrl;
-        if (typeof dataUrl === 'string') {
-          return dataUrl;
-        }
-      }
-      return result as string | Uint8Array;
+    return this.http.get<string | Uint8Array>(`/v1/payments/${encodeURIComponent(id)}/qr`, {
+      ...withTestMode(options),
+      params,
+      responseType: 'arraybuffer',
     });
+  }
+
+  /**
+   * Retrieve a payment by its identifier.
+   *
+   * @example
+   * ```ts
+   * const payment = await facilpay.payments.retrieve('pay_123');
+   * ```
+   */
+  retrieve(id: string, options?: PaymentsRequestOptions): Promise<Payment> {
+    return this.http.get<Payment>(`/v1/payments/${encodeURIComponent(id)}`, withTestMode(options));
+  }
+
+  /**
+   * List payments, optionally filtered.
+   *
+   * @example
+   * ```ts
+   * const page = await facilpay.payments.list({ status: 'succeeded', limit: 20 });
+   * for await (const payment of page) {
+   *   console.log(payment.id);
+   * }
+   * ```
+   */
+  list(params?: ListPaymentsParams, options?: PaymentsRequestOptions): PagePromise<Payment> {
+    return this.http.getPage<Payment>('/v1/payments', params, withTestMode(options));
+  }
+
+  /**
+   * Cancel a payment that has not settled yet.
+   *
+   * @example
+   * ```ts
+   * const payment = await facilpay.payments.cancel('pay_123');
+   * ```
+   */
+  cancel(id: string, options?: PaymentsRequestOptions): Promise<Payment> {
+    return this.http.post<Payment>(
+      `/v1/payments/${encodeURIComponent(id)}/cancel`,
+      undefined,
+      withTestMode(options),
+    );
   }
 }
 
-function withTestMode(options?: PaymentsRequestOptions): BaseRequestOptions | undefined {
+function withTestMode(options?: PaymentsRequestOptions): RequestOptions | undefined {
   if (!options?.testMode) {
     return options;
   }
-  const { testMode: _testMode, ...rest } = options;
   return {
-    ...rest,
-    headers: { ...rest.headers, 'x-test-mode': 'true' },
+    ...options,
+    headers: { ...options.headers, 'x-test-mode': 'true' },
   };
 }
 
 function validateCreatePaymentParams(params: CreatePaymentParams): void {
-  if (!params || typeof params !== 'object') {
-    throw new FacilPayValidationError('`params` must be an object.');
-  }
-  if (typeof params.amount !== 'number' || !Number.isFinite(params.amount) || params.amount < 0.01) {
+  if (typeof params.amount !== 'number' || Number.isNaN(params.amount) || params.amount < 0.01) {
     throw new FacilPayValidationError('`amount` must be a number greater than or equal to 0.01.');
   }
+
   if (typeof params.currency !== 'string' || params.currency.length !== CURRENCY_LENGTH) {
-    throw new FacilPayValidationError('`currency` must be an ISO 4217 code (exactly 3 characters).');
+    throw new FacilPayValidationError('`currency` must be a 3 character ISO 4217 code.');
   }
+
   if (params.description !== undefined && params.description.length > MAX_DESCRIPTION_LENGTH) {
-    throw new FacilPayValidationError('`description` must be at most 500 characters.');
+    throw new FacilPayValidationError(
+      `\`description\` must be at most ${MAX_DESCRIPTION_LENGTH} characters.`,
+    );
   }
+
   if (params.metadata !== undefined) {
     const entries = Object.entries(params.metadata);
     if (entries.length > MAX_METADATA_ENTRIES) {
-      throw new FacilPayValidationError('`metadata` must contain at most 20 entries.');
+      throw new FacilPayValidationError(
+        `\`metadata\` must contain at most ${MAX_METADATA_ENTRIES} entries.`,
+      );
     }
-    for (const [, value] of entries) {
-      if (value.length > MAX_METADATA_VALUE_LENGTH) {
-        throw new FacilPayValidationError('`metadata` values must be at most 500 characters.');
+    for (const [key, value] of entries) {
+      if (typeof value !== 'string' || value.length > MAX_METADATA_VALUE_LENGTH) {
+        throw new FacilPayValidationError(
+          `\`metadata.${key}\` must be a string of at most ${MAX_METADATA_VALUE_LENGTH} characters.`,
+        );
       }
     }
   }
-}
 
-function validateRefundPaymentParams(params?: RefundPaymentDto): void {
-  if (params?.amount !== undefined) {
-    if (typeof params.amount !== 'number' || !Number.isFinite(params.amount) || params.amount <= 0) {
-      throw new FacilPayValidationError('`amount` must be a number greater than 0.');
+  if (params.splits !== undefined) {
+    if (!Array.isArray(params.splits) || params.splits.length === 0) {
+      throw new FacilPayValidationError('`splits` must be a non-empty array when provided.');
+    }
+    const total = params.splits.reduce((sum, split) => sum + split.percentage, 0);
+    if (Math.abs(total - 100) > Number.EPSILON) {
+      throw new FacilPayValidationError('`splits` percentages must sum to 100.');
     }
   }
 }

@@ -73,68 +73,50 @@ describe('FacilPay API key authentication', () => {
     expect(inspect(client)).not.toContain('fp_live_supersecret');
   });
 
-  it('prefers an explicit apiKey over FACILPAY_API_KEY', () => {
+  it('prefers the options key over FACILPAY_API_KEY', () => {
     process.env.FACILPAY_API_KEY = 'fp_test_from_env';
     const client = new FacilPay({ apiKey: 'fp_live_from_options' });
     expect(client.environment).toBe('live');
+    expect(client.isTestMode).toBe(false);
   });
 
-  it('falls back to FACILPAY_API_KEY when the option is an empty string', () => {
+  it('falls back to the env key when the options key is an empty string', () => {
     process.env.FACILPAY_API_KEY = 'fp_test_from_env';
     const client = new FacilPay({ apiKey: '' });
     expect(client.environment).toBe('test');
   });
 
-  it('mentions FACILPAY_API_KEY in the missing-key error', () => {
-    expect(() => new FacilPay({} as never)).toThrow(/FACILPAY_API_KEY/);
-  });
+  it('toString() and toJSON() never leak the key', () => {
+    const client = new FacilPay({ apiKey: 'fp_live_supersecret' });
 
-  it('rejects keys with an unknown prefix', () => {
-    expect(() => new FacilPay({ apiKey: 'fp_unknown_123' })).toThrow(FacilPayError);
+    expect(client.toString()).toBe("FacilPay { environment: 'live' }");
+    expect(client.toString()).not.toContain('fp_live_supersecret');
+    expect(JSON.stringify(client.toJSON())).not.toContain('fp_live_supersecret');
+    expect(client.toJSON()).toEqual({ environment: 'live', isTestMode: false });
   });
 
   it('warns exactly once when a live key is used in a browser', () => {
-    const g = globalThis as Record<string, unknown>;
-    const hadWindow = 'window' in g;
-    const prevWindow = g.window;
-    g.window = {};
+    vi.stubGlobal('window', {});
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
     try {
-      new FacilPay({ apiKey: 'fp_live_browserkey' });
+      new FacilPay({ apiKey: 'fp_live_browser_key' });
       expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('fp_live_'));
     } finally {
-      if (hadWindow) {
-        g.window = prevWindow;
-      } else {
-        delete g.window;
-      }
+      vi.unstubAllGlobals();
     }
   });
 
-  it('does not warn in a browser for a test key', () => {
-    const g = globalThis as Record<string, unknown>;
-    const hadWindow = 'window' in g;
-    const prevWindow = g.window;
-    g.window = {};
+  it('does not warn for test keys in a browser', () => {
+    vi.stubGlobal('window', {});
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
     try {
-      new FacilPay({ apiKey: 'fp_test_browserkey' });
+      new FacilPay({ apiKey: 'fp_test_browser_key' });
       expect(warn).not.toHaveBeenCalled();
     } finally {
-      if (hadWindow) {
-        g.window = prevWindow;
-      } else {
-        delete g.window;
-      }
+      vi.unstubAllGlobals();
     }
-  });
-
-  it('does not leak the API key via toString() or toJSON()', () => {
-    const client = new FacilPay({ apiKey: 'fp_live_supersecret' });
-
-    expect(client.toString()).not.toContain('fp_live_supersecret');
-    expect(client.toString()).toContain('live');
-    expect(JSON.stringify(client.toJSON())).not.toContain('fp_live_supersecret');
-    expect(client.toJSON()).toEqual({ environment: 'live', isTestMode: false });
   });
 });

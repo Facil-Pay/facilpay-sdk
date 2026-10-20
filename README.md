@@ -55,12 +55,12 @@
 
 FacilPay is a Stellar-based payment gateway that lets merchants accept crypto payments and settle in stablecoins (USDC). The platform has three parts:
 
-| Layer         | Repository                                                                  | Stack                     |
-| ------------- | --------------------------------------------------------------------------- | ------------------------- |
-| Contracts     | [facilpay-contracts](https://github.com/Facil-Pay/facilpay-contracts)       | Rust, Soroban (Stellar)   |
-| Backend API   | [facilpay-api](https://github.com/Facil-Pay/facilpay-api)                   | NestJS, PostgreSQL, BullMQ |
-| Dashboard     | [facilpay-frontend](https://github.com/Facil-Pay/facilpay-frontend)         | Next.js, React, Tailwind  |
-| **SDK**       | **facilpay-sdk** (this repo)                                                | **TypeScript**            |
+| Layer       | Repository                                                            | Stack                      |
+| ----------- | --------------------------------------------------------------------- | -------------------------- |
+| Contracts   | [facilpay-contracts](https://github.com/Facil-Pay/facilpay-contracts) | Rust, Soroban (Stellar)    |
+| Backend API | [facilpay-api](https://github.com/Facil-Pay/facilpay-api)             | NestJS, PostgreSQL, BullMQ |
+| Dashboard   | [facilpay-frontend](https://github.com/Facil-Pay/facilpay-frontend)   | Next.js, React, Tailwind   |
+| **SDK**     | **facilpay-sdk** (this repo)                                          | **TypeScript**             |
 
 The SDK wraps all of this in one typed client, so you don't have to write HTTP calls, sign webhooks or build Soroban transactions yourself.
 
@@ -125,10 +125,10 @@ const qr = await facilpay.payments.getQrCode(payment.id);
 
 Create API keys in the FacilPay dashboard or through `POST /v1/api-keys`. Keys come in two environments:
 
-| Prefix       | Environment | Moves real funds |
-| ------------ | ----------- | ---------------- |
-| `fp_test_`   | Testnet     | No               |
-| `fp_live_`   | Mainnet     | Yes              |
+| Prefix     | Environment | Moves real funds |
+| ---------- | ----------- | ---------------- |
+| `fp_test_` | Testnet     | No               |
+| `fp_live_` | Mainnet     | Yes              |
 
 The SDK sends the key as `Authorization: ApiKey <key>`. Never ship a secret key to a browser or mobile app. Keep it on your server.
 
@@ -142,23 +142,23 @@ const facilpay = new FacilPay({ apiKey: process.env.FACILPAY_API_KEY! });
 const facilpay = new FacilPay({
   apiKey: 'fp_test_...',
   baseUrl: 'https://api.facilpay.io', // override for self-hosted or local (http://localhost:3000)
-  timeout: 30_000,                    // per-request timeout in ms
-  maxRetries: 2,                      // retries on network errors, 429 and 5xx
-  fetch: customFetch,                 // bring your own fetch implementation
+  timeout: 30_000, // per-request timeout in ms
+  maxRetries: 2, // retries on network errors, 429 and 5xx
+  fetch: customFetch, // bring your own fetch implementation
   headers: { 'X-Correlation-Id': 'checkout-service' },
-  logger: console,                    // optional debug logging (API keys are redacted)
+  logger: console, // optional debug logging (API keys are redacted)
 });
 ```
 
-| Option       | Type                       | Default                     | Description                                   |
-| ------------ | -------------------------- | --------------------------- | --------------------------------------------- |
-| `apiKey`     | `string`                   | —                           | **Required.** Your `fp_test_` or `fp_live_` key |
-| `baseUrl`    | `string`                   | `https://api.facilpay.io`   | API origin. `/v1` is appended automatically    |
-| `timeout`    | `number`                   | `30000`                     | Request timeout in milliseconds                |
-| `maxRetries` | `number`                   | `2`                         | Maximum automatic retries                      |
-| `fetch`      | `typeof fetch`             | `globalThis.fetch`          | Custom fetch implementation                    |
-| `headers`    | `Record<string, string>`   | `{}`                        | Extra headers sent with every request          |
-| `logger`     | `Logger`                   | `undefined`                 | Receives request/response debug logs           |
+| Option       | Type                     | Default                   | Description                                     |
+| ------------ | ------------------------ | ------------------------- | ----------------------------------------------- |
+| `apiKey`     | `string`                 | —                         | **Required.** Your `fp_test_` or `fp_live_` key |
+| `baseUrl`    | `string`                 | `https://api.facilpay.io` | API origin. `/v1` is appended automatically     |
+| `timeout`    | `number`                 | `30000`                   | Request timeout in milliseconds                 |
+| `maxRetries` | `number`                 | `2`                       | Maximum automatic retries                       |
+| `fetch`      | `typeof fetch`           | `globalThis.fetch`        | Custom fetch implementation                     |
+| `headers`    | `Record<string, string>` | `{}`                      | Extra headers sent with every request           |
+| `logger`     | `Logger`                 | `undefined`               | Receives request/response debug logs            |
 
 ## Usage
 
@@ -188,11 +188,14 @@ await facilpay.payments.cancel(payment.id);
 
 // Timeline, invoice and QR code
 const timeline = await facilpay.payments.timeline(payment.id);
-const invoice  = await facilpay.payments.invoice(payment.id);
-const qr       = await facilpay.payments.getQrCode(payment.id);
+const invoice = await facilpay.payments.invoice(payment.id);
+const qr = await facilpay.payments.getQrCode(payment.id);
 
 // Bulk create and CSV export
-await facilpay.payments.createBulk([{ amount: 10, currency: 'USD' }, { amount: 20, currency: 'USD' }]);
+await facilpay.payments.createBulk([
+  { amount: 10, currency: 'USD' },
+  { amount: 20, currency: 'USD' },
+]);
 const csv = await facilpay.payments.export({ from: '2026-01-01', to: '2026-01-31' });
 ```
 
@@ -272,7 +275,7 @@ const app = express();
 app.post('/webhooks/facilpay', express.raw({ type: 'application/json' }), (req, res) => {
   try {
     const event = Webhooks.constructEvent(
-      req.body,                               // raw Buffer, not parsed JSON
+      req.body, // raw Buffer, not parsed JSON
       req.header('X-FacilPay-Signature')!,
       process.env.FACILPAY_WEBHOOK_SECRET!,
     );
@@ -312,13 +315,13 @@ await facilpay.webhooks.delete(endpoint.id);
 
 ```ts
 const currencies = await facilpay.currencies.list();
-const rates      = await facilpay.rates.get({ base: 'XLM', quote: 'USD' });
+const rates = await facilpay.rates.get({ base: 'XLM', quote: 'USD' });
 
 await facilpay.settlements.configure({ asset: 'USDC', schedule: 'daily', destination: 'G...' });
 const settlements = await facilpay.settlements.list();
 
 const balances = await facilpay.stellar.balances();
-const fees     = await facilpay.merchants.feeReport({ from: '2026-01-01' });
+const fees = await facilpay.merchants.feeReport({ from: '2026-01-01' });
 ```
 
 ### On-chain Contracts (Soroban)
@@ -347,24 +350,27 @@ const result = await payments.submit(signed);
 
 // Read-only queries need no signature
 const onChain = await payments.getPayment(result.paymentId);
-const escrow  = await new EscrowContract({ contractId: 'C...ESCROW', network: Networks.TESTNET }).getEscrow(1n);
+const escrow = await new EscrowContract({
+  contractId: 'C...ESCROW',
+  network: Networks.TESTNET,
+}).getEscrow(1n);
 ```
 
 ## Error Handling
 
 Every failed request throws a subclass of `FacilPayError`:
 
-| Error class                          | HTTP status | When                                        |
-| ------------------------------------ | ----------- | ------------------------------------------- |
-| `FacilPayValidationError`            | 400, 422    | Invalid parameters or idempotency mismatch  |
-| `FacilPayAuthenticationError`        | 401         | Missing, invalid or revoked API key         |
+| Error class                          | HTTP status | When                                             |
+| ------------------------------------ | ----------- | ------------------------------------------------ |
+| `FacilPayValidationError`            | 400, 422    | Invalid parameters or idempotency mismatch       |
+| `FacilPayAuthenticationError`        | 401         | Missing, invalid or revoked API key              |
 | `FacilPayPermissionError`            | 403         | Key lacks scope, IP not allowlisted, geo-blocked |
-| `FacilPayNotFoundError`              | 404         | Resource does not exist                     |
-| `FacilPayConflictError`              | 409         | Resource state conflict                     |
-| `FacilPayRateLimitError`             | 429         | Too many requests (`retryAfter` available)  |
-| `FacilPayAPIError`                   | 5xx         | Server-side error                           |
-| `FacilPayConnectionError`            | —           | Network failure or timeout                  |
-| `FacilPaySignatureVerificationError` | —           | Webhook signature mismatch                  |
+| `FacilPayNotFoundError`              | 404         | Resource does not exist                          |
+| `FacilPayConflictError`              | 409         | Resource state conflict                          |
+| `FacilPayRateLimitError`             | 429         | Too many requests (`retryAfter` available)       |
+| `FacilPayAPIError`                   | 5xx         | Server-side error                                |
+| `FacilPayConnectionError`            | —           | Network failure or timeout                       |
+| `FacilPaySignatureVerificationError` | —           | Webhook signature mismatch                       |
 
 ```ts
 import { FacilPayError, FacilPayRateLimitError } from '@facilpay/sdk';
@@ -488,4 +494,5 @@ This project is licensed under the [MIT License](LICENSE).
 ## Handsoff notes
 
 <!-- handsoff-issue-19 -->
+
 - #19: Settlements, rates, currencies and merchant fee resources

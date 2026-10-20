@@ -1,4 +1,4 @@
-import type { HttpClient, HttpResponse } from '../core/http';
+import type { HttpClient } from '../core/http';
 import type { ResourceRequestOptions } from './request-options';
 
 /**
@@ -108,8 +108,12 @@ export class ApiKeysResource {
   }
 
   /** Update an API key's metadata. Requires user JWT auth. */
-  update(id: string, params: UpdateApiKeyParams, options?: ResourceRequestOptions): Promise<ApiKey> {
-    return this.unwrap(this.client.request<ApiKey>({
+  update(
+    id: string,
+    params: UpdateApiKeyParams,
+    options?: ResourceRequestOptions,
+  ): Promise<ApiKey> {
+    return this.client.request<ApiKey>({
       method: 'PATCH',
       path: `/v1/api-keys/${encodeURIComponent(id)}`,
       body: params,
@@ -139,8 +143,12 @@ export class ApiKeysResource {
   }
 
   /** Fetch usage statistics for an API key. Requires user JWT auth. */
-  usage(id: string, params?: ApiKeyUsageParams, options?: ResourceRequestOptions): Promise<ApiKeyUsage> {
-    return this.unwrap(this.client.request<ApiKeyUsage>({
+  usage(
+    id: string,
+    params?: ApiKeyUsageParams,
+    options?: ResourceRequestOptions,
+  ): Promise<ApiKeyUsage> {
+    return this.client.request<ApiKeyUsage>({
       method: 'GET',
       path: `/v1/api-keys/${encodeURIComponent(id)}/usage`,
       query: params ? { ...params } : undefined,

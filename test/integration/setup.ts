@@ -10,11 +10,10 @@ const API_BASE_URL = process.env.FACILPAY_API_BASE_URL ?? 'http://localhost:4000
 const API_KEY_ENV = 'FACILPAY_API_KEY';
 
 function compose(args: string[], options: { stdio?: 'inherit' | 'pipe' } = {}): string {
-  return execFileSync(
-    'docker',
-    ['compose', '-f', COMPOSE_FILE, '-p', PROJECT_NAME, ...args],
-    { encoding: 'utf8', stdio: options.stdio ?? 'pipe' },
-  );
+  return execFileSync('docker', ['compose', '-f', COMPOSE_FILE, '-p', PROJECT_NAME, ...args], {
+    encoding: 'utf8',
+    stdio: options.stdio ?? 'pipe',
+  });
 }
 
 async function waitForApi(timeoutMs = 120_000): Promise<void> {

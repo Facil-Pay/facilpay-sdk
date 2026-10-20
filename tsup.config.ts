@@ -1,20 +1,35 @@
 import { defineConfig } from 'tsup';
 
-export default defineConfig({
-  entry: {
-    index: 'src/index.ts',
-    'contracts/index': 'src/contracts/index.ts',
-  },
-  format: ['esm', 'cjs'],
-  outDir: 'dist',
+const entry = {
+  index: 'src/index.ts',
+  'contracts/index': 'src/contracts/index.ts',
+};
+
+const common = {
+  entry,
   dts: true,
   clean: true,
   sourcemap: true,
   splitting: false,
   treeshake: true,
-  target: 'es2020',
+  target: 'es2020' as const,
   external: ['@stellar/stellar-sdk'],
-  outExtension({ format }) {
-    return { js: format === 'cjs' ? '.cjs' : '.js' };
+};
+
+export default defineConfig([
+  {
+    ...common,
+    format: ['esm'],
+    outDir: 'dist/esm',
   },
-});
+  {
+    ...common,
+    // Do not clean: this would wipe the ESM output emitted above.
+    clean: false,
+    format: ['cjs'],
+    outDir: 'dist/cjs',
+    outExtension({ format }) {
+      return { js: format === 'cjs' ? '.cjs' : '.js' };
+    },
+  },
+]);

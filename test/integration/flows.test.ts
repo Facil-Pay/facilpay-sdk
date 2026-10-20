@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { createServer, type Server } from 'node:http';
 import { FacilPay } from '../../src/index';
 
@@ -25,7 +25,11 @@ interface WebhookDelivery {
   signature: string;
 }
 
-function startReceiver(): Promise<{ server: Server; url: string; next: () => Promise<WebhookDelivery> }> {
+function startReceiver(): Promise<{
+  server: Server;
+  url: string;
+  next: () => Promise<WebhookDelivery>;
+}> {
   return new Promise((resolve) => {
     let pending: ((d: WebhookDelivery) => void) | null = null;
     const server = createServer((req, res) => {
@@ -33,7 +37,9 @@ function startReceiver(): Promise<{ server: Server; url: string; next: () => Pro
       req.on('data', (c) => chunks.push(c as Buffer));
       req.on('end', () => {
         const body = Buffer.concat(chunks).toString('utf8');
-        const signature = String(req.headers['facilpay-signature'] ?? req.headers['x-facilpay-signature'] ?? '');
+        const signature = String(
+          req.headers['facilpay-signature'] ?? req.headers['x-facilpay-signature'] ?? '',
+        );
         if (pending) {
           const cb = pending;
           pending = null;
