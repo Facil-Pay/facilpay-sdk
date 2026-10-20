@@ -1,6 +1,7 @@
 import type { HttpClient } from '../core/http';
 import { paginate, type PagePromise } from '../core/pagination';
 import { FacilPayError } from '../errors';
+import type { ResourceRequestOptions } from './request-options';
 
 export type RecurringInterval = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
@@ -79,8 +80,13 @@ function mapStateTransitionError(action: 'pause' | 'resume' | 'cancel', error: u
 export class RecurringPaymentsResource {
   constructor(private readonly client: HttpClient) {}
 
-  create(params: CreateRecurringPaymentDto): Promise<RecurringPayment> {
-    return this.client.post<RecurringPayment>('/v1/recurring-payments', params);
+  create(params: CreateRecurringPaymentDto, options?: ResourceRequestOptions): Promise<RecurringPayment> {
+    return this.client.request<RecurringPayment>({
+      method: 'POST',
+      path: '/v1/recurring-payments',
+      body: params,
+      ...options,
+    });
   }
 
   /**
@@ -101,29 +107,43 @@ export class RecurringPaymentsResource {
     });
   }
 
-  retrieve(id: string): Promise<RecurringPayment> {
-    return this.client.get<RecurringPayment>(`/v1/recurring-payments/${id}`);
+  retrieve(id: string, options?: ResourceRequestOptions): Promise<RecurringPayment> {
+    return this.client.request<RecurringPayment>({
+      method: 'GET',
+      path: `/v1/recurring-payments/${id}`,
+      ...options,
+    });
   }
 
-  update(id: string, params: UpdateRecurringPaymentDto): Promise<RecurringPayment> {
-    return this.client.patch<RecurringPayment>(`/v1/recurring-payments/${id}`, params);
+  update(
+    id: string,
+    params: UpdateRecurringPaymentDto,
+    options?: ResourceRequestOptions,
+  ): Promise<RecurringPayment> {
+    return this.client.request<RecurringPayment>({
+      method: 'PATCH',
+      path: `/v1/recurring-payments/${id}`,
+      body: params,
+      ...options,
+    });
   }
 
-  pause(id: string): Promise<RecurringPayment> {
-    return this.transition(id, 'pause');
+  pause(id: string, options?: ResourceRequestOptions): Promise<RecurringPayment> {
+    return this.transition(id, 'pause', options);
   }
 
-  resume(id: string): Promise<RecurringPayment> {
-    return this.transition(id, 'resume');
+  resume(id: string, options?: ResourceRequestOptions): Promise<RecurringPayment> {
+    return this.transition(id, 'resume', options);
   }
 
-  cancel(id: string): Promise<RecurringPayment> {
-    return this.transition(id, 'cancel');
+  cancel(id: string, options?: ResourceRequestOptions): Promise<RecurringPayment> {
+    return this.transition(id, 'cancel', options);
   }
 
   private async transition(
     id: string,
     action: 'pause' | 'resume' | 'cancel',
+    options?: ResourceRequestOptions,
   ): Promise<RecurringPayment> {
     try {
       return await this.client.post<RecurringPayment>(`/v1/recurring-payments/${id}/${action}`);

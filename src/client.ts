@@ -91,6 +91,11 @@ export class FacilPay {
     return `FacilPay { environment: '${this.environment}' }`;
   }
 
+  /** Prevents `util.inspect` from leaking the key or auth headers. */
+  [Symbol.for('nodejs.util.inspect.custom')](): string {
+    return this.toString();
+  }
+
   toJSON(): { environment: FacilPayEnvironment; isTestMode: boolean } {
     return { environment: this.environment, isTestMode: this.isTestMode };
   }

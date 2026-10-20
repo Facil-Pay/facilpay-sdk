@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HttpClient } from './http';
+import { FacilPayValidationError } from './errors';
 
 function createFetch(body: unknown = { ok: true }, headers: Record<string, string> = {}) {
   return vi.fn(

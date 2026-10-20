@@ -284,13 +284,24 @@ export class HttpClient {
       query,
       body,
       headers,
-      idempotencyKey,
+      idempotencyKey: providedIdempotencyKey,
       correlationId,
       signal,
       responseType = 'json',
       timeout = this.timeout,
       maxRetries = this.maxRetries,
     } = options;
+
+    // Resolve the idempotency key once per logical request so that retries of
+    // this call reuse the same key. POST requests get an auto-generated key
+    // when the caller did not provide one; caller-provided keys are always
+    // validated before anything is sent.
+    let idempotencyKey: string | undefined;
+    if (providedIdempotencyKey !== undefined) {
+      idempotencyKey = validateIdempotencyKey(providedIdempotencyKey);
+    } else if (method === 'POST') {
+      idempotencyKey = generateIdempotencyKey();
+    }
 
     const url = buildUrl(this.baseUrl, path, query);
     const requestHeaders = this.buildHeaders(headers, idempotencyKey, correlationId);
