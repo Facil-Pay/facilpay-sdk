@@ -50,6 +50,50 @@ function detectEnvironment(apiKey: string): FacilPayEnvironment {
   );
 }
 
+function validateOptions(options: FacilPayOptions): void {
+  const { timeout, maxRetries, baseUrl } = options;
+
+  if (timeout !== undefined) {
+    if (typeof timeout !== 'number' || !Number.isFinite(timeout) || timeout <= 0) {
+      throw new FacilPayError(
+        `Invalid \`timeout\` option: expected a positive number of milliseconds, received ${String(timeout)}.`,
+      );
+    }
+  }
+
+  if (maxRetries !== undefined) {
+    if (typeof maxRetries !== 'number' || !Number.isInteger(maxRetries) || maxRetries < 0) {
+      throw new FacilPayError(
+        `Invalid \`maxRetries\` option: expected a non-negative integer, received ${String(maxRetries)}.`,
+      );
+    }
+  }
+
+  if (baseUrl !== undefined) {
+    let protocol: string | undefined;
+    try {
+      protocol = new URL(baseUrl).protocol;
+    } catch {
+      protocol = undefined;
+    }
+    if (protocol !== 'http:' && protocol !== 'https:') {
+      throw new FacilPayError(
+        `Invalid \`baseUrl\` option: expected an absolute http(s) URL such as "https://api.facilpay.io", received "${String(baseUrl)}".`,
+      );
+    }
+  }
+
+  if (options.fetch !== undefined && typeof options.fetch !== 'function') {
+    throw new FacilPayError('Invalid `fetch` option: expected a fetch-compatible function.');
+  }
+
+  if (options.fetch === undefined && typeof globalThis.fetch !== 'function') {
+    throw new FacilPayError(
+      'No `fetch` implementation found. This runtime does not provide a global `fetch`; pass one via the `fetch` option (e.g. `new FacilPay({ fetch: nodeFetch })`) or upgrade to Node.js 18+.',
+    );
+  }
+}
+
 export class FacilPay {
   readonly http: HttpClient;
   readonly payments: Payments;
@@ -66,6 +110,7 @@ export class FacilPay {
   #liveWarningLogged = false;
 
   constructor(options: FacilPayOptions = {}) {
+    validateOptions(options);
     const apiKey = resolveApiKey(options);
     const environment = detectEnvironment(apiKey);
 
