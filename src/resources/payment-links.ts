@@ -1,14 +1,8 @@
-import type { HttpClient } from "../core/http";
-import { paginate, type PagePromise } from "../core/pagination";
+import type { HttpClient } from '../client';
 
-export type PaymentLinkSortBy =
-  | "createdAt"
-  | "amount"
-  | "views"
-  | "completions"
-  | "updatedAt";
+export type PaymentLinkSortBy = 'createdAt' | 'amount' | 'views' | 'completions' | 'updatedAt';
 
-export type SortOrder = "asc" | "desc";
+export type SortOrder = 'asc' | 'desc';
 
 export interface PaymentLink {
   id: string;
@@ -75,19 +69,16 @@ export class PaymentLinksResource {
   ) {}
 
   create(params: CreatePaymentLinkParams): Promise<PaymentLink> {
-    return this.http.post<PaymentLink>("/v1/payment-links", {
+    return this.http.post<PaymentLink>('/v1/payment-links', {
       ...params,
       expiresAt: serializeExpiresAt(params.expiresAt),
     });
   }
 
-  /**
-   * List payment links. Returns a page that is also an `AsyncIterable`:
-   * `await` it for the first page, or use `for await` to iterate every
-   * payment link across all pages.
-   */
-  list(params: ListPaymentLinksParams = {}): PagePromise<PaymentLink> {
-    return this.http.getPage<PaymentLink>("/v1/payment-links", params);
+  list(params: ListPaymentLinksParams = {}): Promise<ListPaymentLinksResponse> {
+    return this.http.get<ListPaymentLinksResponse>('/v1/payment-links', {
+      query: params,
+    });
   }
 
   retrieve(token: string): Promise<PaymentLink> {
@@ -114,6 +105,6 @@ export class PaymentLinksResource {
   }
 
   checkoutUrl(token: string): string {
-    return `${this.checkoutBaseUrl.replace(/\/$/, "")}/pay/${token}`;
+    return `${this.checkoutBaseUrl.replace(/\/$/, '')}/pay/${token}`;
   }
 }

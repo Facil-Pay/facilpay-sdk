@@ -1,5 +1,5 @@
-import { FacilPayConnectionError, FacilPayError } from './errors';
-import { paginate, type PageEnvelope, type PagePromise } from './pagination';
+import { FacilPayConnectionError, FacilPayError, createApiError } from './errors';
+import { detectRuntime, VERSION, clientUserAgent } from './version';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
 
@@ -72,16 +72,6 @@ const DEFAULT_MAX_RETRIES = 2;
 const INITIAL_RETRY_DELAY_MS = 250;
 const MAX_RETRY_DELAY_MS = 5_000;
 
-export function detectRuntime(): string {
-  const g = globalThis as Record<string, unknown>;
-  if (typeof g.Bun !== 'undefined') return 'bun';
-  if (typeof g.Deno !== 'undefined') return 'deno';
-  if (typeof g.EdgeRuntime !== 'undefined') return 'edge';
-  if (typeof g.window !== 'undefined' && typeof g.document !== 'undefined') return 'browser';
-  if (typeof g.process !== 'undefined') return 'node';
-  return 'unknown';
-}
-
 function stripTrailingSlashes(url: string): string {
   return url.replace(/\/+$/, '');
 }
@@ -97,9 +87,7 @@ const TOKEN_PATTERN = /\b(?:whsec_[A-Z0-9_-]+|fp_(?:live|test)_[A-Z0-9_-]+)\b/gi
 const SENSITIVE_KEY_PATTERN = /authorization|x-api-key|secret/i;
 
 function redactString(value: string): string {
-  return value
-    .replace(EMAIL_PATTERN, '[REDACTED_EMAIL]')
-    .replace(TOKEN_PATTERN, REDACTED);
+  return value.replace(EMAIL_PATTERN, '[REDACTED_EMAIL]').replace(TOKEN_PATTERN, REDACTED);
 }
 
 function redactForLog(value: unknown, key?: string): unknown {
@@ -118,7 +106,9 @@ function redactForLog(value: unknown, key?: string): unknown {
 }
 
 function getEnvironmentLogger(): Logger | undefined {
-  const g = globalThis as typeof globalThis & { process?: { env?: Record<string, string | undefined> } };
+  const g = globalThis as typeof globalThis & {
+    process?: { env?: Record<string, string | undefined> };
+  };
   if (detectRuntime() !== 'node' || g.process?.env?.FACILPAY_LOG !== 'debug') return undefined;
   return console;
 }
@@ -129,6 +119,13 @@ function responseHeadersToObject(headers: Headers): Record<string, string> {
     result[key] = value;
   });
   return result;
+}
+
+function parseRetryAfter(headers: Headers): number | undefined {
+  const raw = headers.get('retry-after');
+  if (raw === null) return undefined;
+  const seconds = Number(raw);
+  return Number.isFinite(seconds) ? seconds : undefined;
 }
 
 export function serializeQuery(query?: QueryParams): string {
@@ -237,7 +234,7 @@ export class HttpClient {
 
   constructor(options: HttpClientOptions = {}) {
     this.baseUrl = stripTrailingSlashes(options.baseUrl ?? DEFAULT_BASE_URL);
-    this.version = options.version ?? '0.0.0';
+    this.version = options.version ?? VERSION;
     this.timeout = options.timeout ?? DEFAULT_TIMEOUT;
     this.maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
     this.apiKey = options.apiKey;
@@ -254,12 +251,12 @@ export class HttpClient {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       Accept: 'application/json',
-      'User-Agent': `facilpay-sdk-js/${this.version} (${detectRuntime()})`,
-      'X-FacilPay-Client': `facilpay-sdk-js/${this.version} (${detectRuntime()})`,
+      'User-Agent': clientUserAgent(this.version),
+      'X-FacilPay-Client': clientUserAgent(this.version),
       ...this.defaultHeaders,
       ...extra,
     };
-    if (this.apiKey) headers.Authorization = `Bearer ${this.apiKey}`;
+    if (this.apiKey) headers.Authorization = `ApiKey ${this.apiKey}`;
     if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
     if (correlationId) {
       for (const key of Object.keys(headers)) {
@@ -278,22 +275,9 @@ export class HttpClient {
     }
   }
 
-  /**
-   * Whether a request may be retried. Idempotent methods are always safe to
-   * retry; other methods require an `Idempotency-Key` so a retried request
-   * can never execute twice.
-   */
-  private isRetryableRequest(
-    method: HttpMethod,
-    headers: Record<string, string>,
-    idempotencyKey?: string,
-  ): boolean {
-    if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return true;
-    if (idempotencyKey) return true;
-    return Object.keys(headers).some((key) => key.toLowerCase() === 'idempotency-key');
-  }
-
-  async request<T = unknown, TBody = unknown>(options: RequestOptions<TBody>): Promise<HttpResponse<T>> {
+  async request<T = unknown, TBody = unknown>(
+    options: RequestOptions<TBody>,
+  ): Promise<HttpResponse<T>> {
     const {
       method = 'GET',
       path,
@@ -313,22 +297,32 @@ export class HttpClient {
     const canRetryRequest = this.isRetryableRequest(method, requestHeaders, idempotencyKey);
     const startedAt = Date.now();
 
-    let attempt = 0;
-    for (;;) {
-      attempt += 1;
-      const controller = new AbortController();
-      let timedOut = false;
-      const timer = setTimeout(() => {
-        timedOut = true;
-        controller.abort();
-      }, timeout);
+    let responseStatus: number | undefined;
+    let requestId: string | undefined;
+    let responseHeaders: Record<string, string> | undefined;
+    let responseBody: unknown;
 
-      const onExternalAbort = (): void => {
-        controller.abort();
-      };
-      if (signal) {
-        if (signal.aborted) controller.abort();
-        else signal.addEventListener('abort', onExternalAbort, { once: true });
+    try {
+      const response = await this.fetchImpl(url, {
+        method,
+        headers: requestHeaders,
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: controller.signal,
+      });
+
+      responseStatus = response.status;
+      responseHeaders = responseHeadersToObject(response.headers);
+      requestId = response.headers.get('x-request-id') ?? undefined;
+      const correlationId = response.headers.get('x-correlation-id') ?? undefined;
+      responseBody = await this.parseBody(response, responseType);
+
+      if (!response.ok) {
+        throw createApiError(response.status, {
+          body: responseBody,
+          requestId,
+          correlationId,
+          retryAfter: parseRetryAfter(response.headers),
+        });
       }
       const cleanupAttempt = (): void => {
         clearTimeout(timer);

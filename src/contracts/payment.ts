@@ -2,9 +2,7 @@ import {
   Account,
   Address,
   Contract,
-  Keypair,
   Networks,
-  Operation,
   SorobanRpc,
   Transaction,
   TransactionBuilder,
@@ -94,7 +92,10 @@ export class FacilPayContractError extends Error {
   constructor(message: string, code?: number) {
     super(message);
     this.code = code;
-    this.name = code !== undefined ? FACILPAY_CONTRACT_ERRORS[code] ?? 'FacilPayContractError' : 'FacilPayContractError';
+    this.name =
+      code !== undefined
+        ? (FACILPAY_CONTRACT_ERRORS[code] ?? 'FacilPayContractError')
+        : 'FacilPayContractError';
   }
 }
 

@@ -1,6 +1,5 @@
 import { FacilPayValidationError } from '../errors';
-import type { HttpClient, RequestOptions } from '../core/http';
-import type { PagePromise } from '../core/pagination';
+import type { HttpClient, RequestOptions } from '../http';
 import type { Payment, Refund } from '../types';
 
 /**
@@ -138,11 +137,6 @@ export interface PaymentsRequestOptions extends RequestOptions {
   /** When true, sends the `x-test-mode: true` header. */
   testMode?: boolean;
 }
-
-const MAX_METADATA_ENTRIES = 20;
-const MAX_METADATA_VALUE_LENGTH = 500;
-const MAX_DESCRIPTION_LENGTH = 500;
-const CURRENCY_LENGTH = 3;
 
 /**
  * Payments resource.
@@ -319,7 +313,7 @@ export class Payments {
     return this.http.get<string | Uint8Array>(`/v1/payments/${encodeURIComponent(id)}/qr`, {
       ...withTestMode(options),
       params,
-      responseType: 'arrayBuffer',
+      responseType: 'arraybuffer',
     });
   }
 
@@ -337,9 +331,6 @@ export class Payments {
 
   /**
    * List payments, optionally filtered.
-   *
-   * Returns a page that is also an `AsyncIterable`: `await` it for the first
-   * page, or use `for await` to iterate every payment across all pages.
    *
    * @example
    * ```ts
@@ -419,14 +410,5 @@ function validateCreatePaymentParams(params: CreatePaymentParams): void {
     if (Math.abs(total - 100) > Number.EPSILON) {
       throw new FacilPayValidationError('`splits` percentages must sum to 100.');
     }
-  }
-}
-
-function validateRefundPaymentParams(params?: RefundPaymentDto): void {
-  if (
-    params?.amount !== undefined &&
-    (typeof params.amount !== 'number' || !(params.amount > 0))
-  ) {
-    throw new FacilPayValidationError('`amount` must be a number greater than 0 when provided.');
   }
 }

@@ -58,10 +58,16 @@ export class FacilPay {
       this.#warnLiveKeyInBrowser();
     }
 
+    // The raw apiKey must not reach HttpClient: it would set its own
+    // Authorization header and overwrite the `ApiKey` scheme below.
+    // Auth is set here, in exactly one place.
+    const httpOptions: HttpClientOptions = { ...options };
+    delete httpOptions.apiKey;
+
     this.http = new HttpClient({
-      ...options,
+      ...httpOptions,
       headers: {
-        ...options.headers,
+        ...httpOptions.headers,
         Authorization: `ApiKey ${apiKey}`,
       },
     });
@@ -72,7 +78,6 @@ export class FacilPay {
       return;
     }
     this.#liveWarningLogged = true;
-    // eslint-disable-next-line no-console
     console.warn(
       '[facilpay] A live API key (fp_live_) is being used in a browser environment. Live keys should only be used from trusted server-side code.',
     );
