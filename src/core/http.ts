@@ -72,9 +72,7 @@ const TOKEN_PATTERN = /\b(?:whsec_[A-Z0-9_-]+|fp_(?:live|test)_[A-Z0-9_-]+)\b/gi
 const SENSITIVE_KEY_PATTERN = /authorization|x-api-key|secret/i;
 
 function redactString(value: string): string {
-  return value
-    .replace(EMAIL_PATTERN, '[REDACTED_EMAIL]')
-    .replace(TOKEN_PATTERN, REDACTED);
+  return value.replace(EMAIL_PATTERN, '[REDACTED_EMAIL]').replace(TOKEN_PATTERN, REDACTED);
 }
 
 function redactForLog(value: unknown, key?: string): unknown {
@@ -93,7 +91,9 @@ function redactForLog(value: unknown, key?: string): unknown {
 }
 
 function getEnvironmentLogger(): Logger | undefined {
-  const g = globalThis as typeof globalThis & { process?: { env?: Record<string, string | undefined> } };
+  const g = globalThis as typeof globalThis & {
+    process?: { env?: Record<string, string | undefined> };
+  };
   if (detectRuntime() !== 'node' || g.process?.env?.FACILPAY_LOG !== 'debug') return undefined;
   return console;
 }
@@ -188,7 +188,9 @@ export class HttpClient {
     }
   }
 
-  async request<T = unknown, TBody = unknown>(options: RequestOptions<TBody>): Promise<HttpResponse<T>> {
+  async request<T = unknown, TBody = unknown>(
+    options: RequestOptions<TBody>,
+  ): Promise<HttpResponse<T>> {
     const {
       method = 'GET',
       path,

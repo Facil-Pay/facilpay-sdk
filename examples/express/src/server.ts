@@ -47,9 +47,8 @@ app.get('/', async (_req, res) => {
       description: 'Express QR checkout example',
     });
     const qr = await facilpay.payments.getQrCode(payment.id, { format: 'png' });
-    const image = typeof qr === 'string'
-      ? qr
-      : `data:image/png;base64,${Buffer.from(qr).toString('base64')}`;
+    const image =
+      typeof qr === 'string' ? qr : `data:image/png;base64,${Buffer.from(qr).toString('base64')}`;
 
     res.type('html').send(`<!doctype html>
 <html lang="en">
@@ -65,7 +64,9 @@ app.get('/', async (_req, res) => {
 </html>`);
   } catch (error) {
     console.error('Could not create checkout:', error);
-    res.status(500).send('Unable to create a payment. Check the server logs and API configuration.');
+    res
+      .status(500)
+      .send('Unable to create a payment. Check the server logs and API configuration.');
   }
 });
 

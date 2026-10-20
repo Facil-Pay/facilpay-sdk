@@ -1,15 +1,6 @@
-export type RecurringInterval =
-  | 'daily'
-  | 'weekly'
-  | 'monthly'
-  | 'quarterly'
-  | 'yearly';
+export type RecurringInterval = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
 
-export type RecurringPaymentStatus =
-  | 'active'
-  | 'paused'
-  | 'cancelled'
-  | 'completed';
+export type RecurringPaymentStatus = 'active' | 'paused' | 'cancelled' | 'completed';
 
 export interface CreateRecurringPaymentDto {
   customerId: string;

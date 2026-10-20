@@ -78,7 +78,6 @@ export class FacilPay {
       return;
     }
     this.#liveWarningLogged = true;
-    // eslint-disable-next-line no-console
     console.warn(
       '[facilpay] A live API key (fp_live_) is being used in a browser environment. Live keys should only be used from trusted server-side code.',
     );
