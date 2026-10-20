@@ -1,14 +1,8 @@
-import type { HttpClient } from '../core/http';
-import type { ResourceRequestOptions } from './request-options';
+import type { HttpClient } from '../client';
 
-export type PaymentLinkSortBy =
-  | "createdAt"
-  | "amount"
-  | "views"
-  | "completions"
-  | "updatedAt";
+export type PaymentLinkSortBy = 'createdAt' | 'amount' | 'views' | 'completions' | 'updatedAt';
 
-export type SortOrder = "asc" | "desc";
+export type SortOrder = 'asc' | 'desc';
 
 export interface PaymentLink {
   id: string;
@@ -74,25 +68,15 @@ export class PaymentLinksResource {
     private readonly checkoutBaseUrl: string,
   ) {}
 
-  create(params: CreatePaymentLinkParams, options?: ResourceRequestOptions): Promise<PaymentLink> {
-    return this.http.request<PaymentLink>({
-      method: 'POST',
-      path: '/v1/payment-links',
-      body: {
-        ...params,
-        expiresAt: serializeExpiresAt(params.expiresAt),
-      },
-      ...options,
+  create(params: CreatePaymentLinkParams): Promise<PaymentLink> {
+    return this.http.post<PaymentLink>('/v1/payment-links', {
+      ...params,
+      expiresAt: serializeExpiresAt(params.expiresAt),
     });
   }
 
-  list(
-    params: ListPaymentLinksParams = {},
-    options?: ResourceRequestOptions,
-  ): Promise<ListPaymentLinksResponse> {
-    return this.http.request<ListPaymentLinksResponse>({
-      method: 'GET',
-      path: '/v1/payment-links',
+  list(params: ListPaymentLinksParams = {}): Promise<ListPaymentLinksResponse> {
+    return this.http.get<ListPaymentLinksResponse>('/v1/payment-links', {
       query: params,
       ...options,
     });
@@ -152,6 +136,6 @@ export class PaymentLinksResource {
   }
 
   checkoutUrl(token: string): string {
-    return `${this.checkoutBaseUrl.replace(/\/$/, "")}/pay/${token}`;
+    return `${this.checkoutBaseUrl.replace(/\/$/, '')}/pay/${token}`;
   }
 }

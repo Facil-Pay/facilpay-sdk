@@ -1,14 +1,11 @@
 import type { HttpClient } from '../core/http';
+import { paginate, type PagePromise } from '../core/pagination';
 import { FacilPayError } from '../errors';
 import type { ResourceRequestOptions } from './request-options';
 
 export type RecurringInterval = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
-export type RecurringPaymentStatus =
-  | 'active'
-  | 'paused'
-  | 'cancelled'
-  | 'completed';
+export type RecurringPaymentStatus = 'active' | 'paused' | 'cancelled' | 'completed';
 
 export interface CreateRecurringPaymentDto {
   customerId: string;
@@ -66,10 +63,7 @@ const STATE_TRANSITION_MESSAGES: Record<string, string> = {
   'cancel:cancelled': 'Recurring payment is already cancelled.',
 };
 
-function mapStateTransitionError(
-  action: 'pause' | 'resume' | 'cancel',
-  error: unknown,
-): never {
+function mapStateTransitionError(action: 'pause' | 'resume' | 'cancel', error: unknown): never {
   const status = (error as { status?: number })?.status;
   const message = (error as { message?: string })?.message ?? '';
   if (status === 409 || /state|transition|status/i.test(message)) {
@@ -95,15 +89,21 @@ export class RecurringPaymentsResource {
     });
   }
 
-  list(
-    params?: ListRecurringPaymentsParams,
-    options?: ResourceRequestOptions,
-  ): Promise<ListRecurringPaymentsResponse> {
-    return this.client.request<ListRecurringPaymentsResponse>({
-      method: 'GET',
-      path: '/v1/recurring-payments',
-      query: params,
-      ...options,
+  /**
+   * List recurring payments. Returns a page that is also an `AsyncIterable`:
+   * `await` it for the first page, or use `for await` to iterate every
+   * recurring payment across all pages.
+   */
+  list(params?: ListRecurringPaymentsParams): PagePromise<RecurringPayment> {
+    const limit = params?.limit ?? 20;
+    // The API is offset-based; translate the 1-based page into an offset and
+    // adapt the envelope to the page shape consumed by `paginate`.
+    return paginate<RecurringPayment>(async (page) => {
+      const response = await this.client.get<ListRecurringPaymentsResponse>(
+        '/v1/recurring-payments',
+        { params: { ...params, limit, offset: (page - 1) * limit } },
+      );
+      return { data: response.data, total: response.total, page, limit };
     });
   }
 
@@ -146,11 +146,7 @@ export class RecurringPaymentsResource {
     options?: ResourceRequestOptions,
   ): Promise<RecurringPayment> {
     try {
-      return await this.client.request<RecurringPayment>({
-        method: 'POST',
-        path: `/v1/recurring-payments/${id}/${action}`,
-        ...options,
-      });
+      return await this.client.post<RecurringPayment>(`/v1/recurring-payments/${id}/${action}`);
     } catch (error) {
       return mapStateTransitionError(action, error);
     }

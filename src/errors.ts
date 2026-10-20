@@ -20,3 +20,18 @@ export class FacilPaySignatureVerificationError extends FacilPayError {
     Object.setPrototypeOf(this, new.target.prototype);
   }
 }
+
+/**
+ * Thrown when client-side validation fails before any request is made
+ * (e.g. an invalid idempotency key or missing Stellar parameters).
+ */
+export class FacilPayValidationError extends FacilPayError {
+  /** Machine-readable failure code, when available. */
+  public readonly code?: string;
+
+  constructor(message: string, options?: { code?: string }) {
+    super(message);
+    this.name = 'FacilPayValidationError';
+    this.code = options?.code;
+  }
+}
