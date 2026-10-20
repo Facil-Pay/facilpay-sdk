@@ -69,7 +69,7 @@ export interface Refund {
 /**
  * A single item submitted to the bulk create endpoint.
  */
-export interface BulkCreatePaymentItem extends CreatePaymentParams {}
+export type BulkCreatePaymentItem = CreatePaymentParams;
 
 /**
  * A successfully created payment within a bulk create response.
@@ -102,7 +102,7 @@ export interface BulkCreatePaymentsResponseDto {
 /**
  * Parameters accepted by the CSV export endpoint.
  */
-export interface ExportPaymentsParams extends ListPaymentsParams {}
+export type ExportPaymentsParams = ListPaymentsParams;
 
 /**
  * A single entry in a payment timeline.

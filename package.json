@@ -13,14 +13,24 @@
   "types": "./dist/esm/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/esm/index.d.ts",
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.cjs"
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.cts",
+        "default": "./dist/cjs/index.cjs"
+      }
     },
     "./contracts": {
-      "types": "./dist/esm/contracts/index.d.ts",
-      "import": "./dist/esm/contracts/index.js",
-      "require": "./dist/cjs/contracts/index.cjs"
+      "import": {
+        "types": "./dist/esm/contracts/index.d.ts",
+        "default": "./dist/esm/contracts/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/contracts/index.d.cts",
+        "default": "./dist/cjs/contracts/index.cjs"
+      }
     },
     "./package.json": "./package.json"
   },
@@ -36,6 +46,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint .",
+    "publint": "publint",
+    "attw": "attw --pack",
     "typecheck:examples": "npm run typecheck --prefix examples/express && npm run typecheck --prefix examples/nextjs && npm run typecheck --prefix examples/node-script",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit"

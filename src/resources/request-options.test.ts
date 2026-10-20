@@ -1,88 +1,124 @@
 import { describe, expect, it, vi } from 'vitest';
+import { HttpClient } from '../core/http';
+import { FacilPayConnectionError } from '../core/errors';
 import { DisputesResource } from './disputes';
 import { RecurringPaymentsResource } from './recurring-payments';
 import { PaymentLinksResource } from './payment-links';
 import { ApiKeysResource } from './api-keys';
 import { WebhooksResource } from './webhooks';
+import type { ResourceRequestOptions } from './request-options';
 
-function requestClient() {
-  return { request: vi.fn(async () => ({})) };
-}
-
-function helperClient() {
+function createMockHttp() {
   return {
-    get: vi.fn(async () => ({})),
-    post: vi.fn(async () => ({})),
-    patch: vi.fn(async () => ({})),
-    delete: vi.fn(async () => ({})),
-  };
+    request: vi.fn(async () => ({ data: {}, status: 200, headers: new Headers() })),
+  } as unknown as HttpClient & { request: ReturnType<typeof vi.fn> };
 }
 
-describe('ResourceRequestOptions', () => {
-  it('forwards signal/timeout/headers from Disputes.retrieve', async () => {
-    const client = requestClient();
-    const controller = new AbortController();
-    await new DisputesResource(client as never).retrieve('dp_1', {
-      signal: controller.signal,
+function abortedSignal(): AbortSignal {
+  const controller = new AbortController();
+  controller.abort();
+  return controller.signal;
+}
+
+describe('resource request options (signal / timeout)', () => {
+  it('disputes.create forwards signal, timeout, idempotencyKey and headers', async () => {
+    const http = createMockHttp();
+    const disputes = new DisputesResource(http);
+    const options: ResourceRequestOptions = {
+      signal: abortedSignal(),
       timeout: 1000,
-      headers: { 'X-Trace': 'a' },
-    });
-    expect(client.request).toHaveBeenCalledWith(
+      idempotencyKey: 'dispute-key_1',
+      headers: { 'X-Custom': 'yes' },
+    };
+
+    await disputes.create('pay_123', { reason: 'fraud' }, options);
+
+    expect(http.request).toHaveBeenCalledWith(
       expect.objectContaining({
-        signal: controller.signal,
+        method: 'POST',
+        signal: options.signal,
         timeout: 1000,
-        headers: { 'X-Trace': 'a' },
+        idempotencyKey: 'dispute-key_1',
+        headers: { 'X-Custom': 'yes' },
       }),
     );
   });
 
-  it('aborts RecurringPayments.retrieve via signal', async () => {
-    const client = helperClient();
-    const controller = new AbortController();
-    controller.abort();
-    await new RecurringPaymentsResource(client as never).retrieve('rp_1', {
-      signal: controller.signal,
-    });
-    const [, options] = client.get.mock.calls[0] as [string, { signal?: AbortSignal }];
-    expect(options?.signal).toBe(controller.signal);
-    expect(options?.signal?.aborted).toBe(true);
-  });
+  it('recurring-payments.list forwards signal and timeout', async () => {
+    const http = createMockHttp();
+    const recurring = new RecurringPaymentsResource(http);
+    const signal = abortedSignal();
 
-  it('forwards timeout from PaymentLinks.retrieve', async () => {
-    const client = helperClient();
-    await new PaymentLinksResource(client as never, 'https://pay.example').retrieve('tok_1', {
-      timeout: 2500,
-    });
-    expect(client.get).toHaveBeenCalledWith(
-      '/v1/payment-links/tok_1',
-      expect.objectContaining({ timeout: 2500 }),
+    await recurring.list({ status: 'active' }, { signal, timeout: 500 });
+
+    expect(http.request).toHaveBeenCalledWith(
+      expect.objectContaining({ method: 'GET', signal, timeout: 500 }),
     );
   });
 
-  it('forwards idempotencyKey from ApiKeys.create', async () => {
-    const client = requestClient();
-    await new ApiKeysResource(client as never).create(
-      { name: 'k', environment: 'test' },
-      { idempotencyKey: 'key_123' },
-    );
-    expect(client.request).toHaveBeenCalledWith(
-      expect.objectContaining({ idempotencyKey: 'key_123' }),
+  it('payment-links.retrieve forwards signal and timeout', async () => {
+    const http = createMockHttp();
+    const links = new PaymentLinksResource(http, 'https://pay.facilpay.io');
+    const signal = abortedSignal();
+
+    await links.retrieve('tok_123', { signal, timeout: 500 });
+
+    expect(http.request).toHaveBeenCalledWith(
+      expect.objectContaining({ method: 'GET', signal, timeout: 500 }),
     );
   });
 
-  it('aborts Webhooks.sendTest via signal', async () => {
-    const client = helperClient();
-    const controller = new AbortController();
-    controller.abort();
-    await new WebhooksResource(client as never).sendTest('wh_1', {
-      signal: controller.signal,
-    });
-    const [, , options] = client.post.mock.calls[0] as [
-      string,
-      unknown,
-      { signal?: AbortSignal },
-    ];
-    expect(options?.signal).toBe(controller.signal);
-    expect(options?.signal?.aborted).toBe(true);
+  it('api-keys.retrieve forwards signal and timeout', async () => {
+    const http = createMockHttp();
+    const apiKeys = new ApiKeysResource(http);
+    const signal = abortedSignal();
+
+    await apiKeys.retrieve('key_123', { signal, timeout: 500 });
+
+    expect(http.request).toHaveBeenCalledWith(
+      expect.objectContaining({ method: 'GET', signal, timeout: 500 }),
+    );
+  });
+
+  it('webhooks.list forwards signal and timeout', async () => {
+    const http = createMockHttp();
+    const webhooks = new WebhooksResource(http);
+    const signal = abortedSignal();
+
+    await webhooks.list({ signal, timeout: 500 });
+
+    expect(http.request).toHaveBeenCalledWith(
+      expect.objectContaining({ method: 'GET', signal, timeout: 500 }),
+    );
+  });
+
+  it('aborts a real request when the signal is already aborted', async () => {
+    const fetch = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      if (init?.signal?.aborted) {
+        throw new DOMException('Aborted', 'AbortError');
+      }
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const http = new HttpClient({ fetch });
+
+    await expect(
+      http.request({ path: '/disputes', signal: abortedSignal(), timeout: 5000 }),
+    ).rejects.toThrow(FacilPayConnectionError);
+  });
+
+  it('times out a hanging request after the per-request timeout', async () => {
+    const fetch = vi.fn(
+      (_url: unknown, init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('Aborted', 'AbortError')),
+          );
+        }),
+    ) as unknown as typeof fetch;
+    const http = new HttpClient({ fetch });
+
+    await expect(http.request({ path: '/disputes', timeout: 20 })).rejects.toThrow(
+      /timed out after 20ms/,
+    );
   });
 });

@@ -1,14 +1,15 @@
+import type { RequestOptions } from '../core/http';
+
 /**
- * Per-request overrides accepted as an optional trailing argument by every
+ * Per-request options accepted as the optional trailing argument of every
  * resource method.
+ *
+ * Lets callers cancel a request (`signal`), bound it (`timeout`), set an
+ * idempotency key for write operations (`idempotencyKey`), or attach
+ * per-request headers (`headers`). Everything is forwarded to
+ * {@link HttpClient.request}.
  */
-export interface ResourceRequestOptions {
-  /** Abort the request via an AbortSignal. */
-  signal?: AbortSignal;
-  /** Per-request timeout in milliseconds. */
-  timeout?: number;
-  /** Idempotency key forwarded as the `Idempotency-Key` header. */
-  idempotencyKey?: string;
-  /** Additional headers merged into the request. */
-  headers?: Record<string, string>;
-}
+export type ResourceRequestOptions = Pick<
+  RequestOptions,
+  'signal' | 'timeout' | 'idempotencyKey' | 'headers'
+>;
