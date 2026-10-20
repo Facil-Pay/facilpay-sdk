@@ -1,5 +1,6 @@
-import type { FacilPayClient } from '../client';
-import type { Paginated, PaginationParams } from '../types';
+import type { HttpClient } from '../core/http';
+import { paginate, type PageEnvelope, type PagePromise } from '../core/pagination';
+import type { PaginationParams } from '../types';
 
 /**
  * Status of a dispute as returned by the FacilPay API.
@@ -58,7 +59,7 @@ export interface ListDisputesParams extends PaginationParams {
  * evidence or status changes.
  */
 export class DisputesResource {
-  constructor(private readonly client: FacilPayClient) {}
+  constructor(private readonly client: HttpClient) {}
 
   /**
    * Open a dispute on a payment.
@@ -66,24 +67,27 @@ export class DisputesResource {
    * `POST /v1/payments/:id/dispute`
    */
   create(paymentId: string, params: CreateDisputeDto): Promise<Dispute> {
-    return this.client.request<Dispute>({
-      method: 'POST',
-      path: `/v1/payments/${encodeURIComponent(paymentId)}/dispute`,
-      body: params,
-    });
+    return this.client.post<Dispute>(
+      `/v1/payments/${encodeURIComponent(paymentId)}/dispute`,
+      params,
+    );
   }
 
   /**
    * List disputes.
    *
+   * Returns a page that is also an `AsyncIterable`: `await` it for the first
+   * page, or use `for await` to iterate every dispute across all pages.
+   *
    * `GET /v1/disputes`
    */
-  list(params?: ListDisputesParams): Promise<Paginated<Dispute>> {
-    return this.client.request<Paginated<Dispute>>({
-      method: 'GET',
-      path: '/v1/disputes',
-      query: params,
-    });
+  list(params?: ListDisputesParams): PagePromise<Dispute> {
+    const limit = (params as { limit?: number } | undefined)?.limit ?? 20;
+    return paginate<Dispute>((page) =>
+      this.client.get<PageEnvelope<Dispute>>('/v1/disputes', {
+        params: { ...params, page, limit },
+      }),
+    );
   }
 
   /**
@@ -92,10 +96,7 @@ export class DisputesResource {
    * `GET /v1/disputes/:id`
    */
   retrieve(id: string): Promise<Dispute> {
-    return this.client.request<Dispute>({
-      method: 'GET',
-      path: `/v1/disputes/${encodeURIComponent(id)}`,
-    });
+    return this.client.get<Dispute>(`/v1/disputes/${encodeURIComponent(id)}`);
   }
 
   /**
@@ -104,10 +105,6 @@ export class DisputesResource {
    * `PATCH /v1/disputes/:id`
    */
   update(id: string, params: UpdateDisputeDto): Promise<Dispute> {
-    return this.client.request<Dispute>({
-      method: 'PATCH',
-      path: `/v1/disputes/${encodeURIComponent(id)}`,
-      body: params,
-    });
+    return this.client.patch<Dispute>(`/v1/disputes/${encodeURIComponent(id)}`, params);
   }
 }
