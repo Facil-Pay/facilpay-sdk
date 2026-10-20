@@ -1,4 +1,5 @@
-import { FacilPayConnectionError, FacilPayError } from './errors';
+import { FacilPayConnectionError, FacilPayError, createApiError } from './errors';
+import { detectRuntime, VERSION, clientUserAgent } from './version';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
 
@@ -56,16 +57,6 @@ export interface HttpResponse<T> {
 export const DEFAULT_BASE_URL = 'https://api.facilpay.io';
 const DEFAULT_TIMEOUT = 30_000;
 
-export function detectRuntime(): string {
-  const g = globalThis as Record<string, unknown>;
-  if (typeof g.Bun !== 'undefined') return 'bun';
-  if (typeof g.Deno !== 'undefined') return 'deno';
-  if (typeof g.EdgeRuntime !== 'undefined') return 'edge';
-  if (typeof g.window !== 'undefined' && typeof g.document !== 'undefined') return 'browser';
-  if (typeof g.process !== 'undefined') return 'node';
-  return 'unknown';
-}
-
 function stripTrailingSlashes(url: string): string {
   return url.replace(/\/+$/, '');
 }
@@ -115,6 +106,13 @@ function responseHeadersToObject(headers: Headers): Record<string, string> {
   return result;
 }
 
+function parseRetryAfter(headers: Headers): number | undefined {
+  const raw = headers.get('retry-after');
+  if (raw === null) return undefined;
+  const seconds = Number(raw);
+  return Number.isFinite(seconds) ? seconds : undefined;
+}
+
 export function serializeQuery(query?: QueryParams): string {
   if (!query) return '';
   const params = new URLSearchParams();
@@ -150,7 +148,7 @@ export class HttpClient {
 
   constructor(options: HttpClientOptions = {}) {
     this.baseUrl = stripTrailingSlashes(options.baseUrl ?? DEFAULT_BASE_URL);
-    this.version = options.version ?? '0.0.0';
+    this.version = options.version ?? VERSION;
     this.timeout = options.timeout ?? DEFAULT_TIMEOUT;
     this.apiKey = options.apiKey;
     this.fetchImpl = options.fetch ?? globalThis.fetch.bind(globalThis);
@@ -166,12 +164,12 @@ export class HttpClient {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       Accept: 'application/json',
-      'User-Agent': `facilpay-sdk-js/${this.version} (${detectRuntime()})`,
-      'X-FacilPay-Client': `facilpay-sdk-js/${this.version} (${detectRuntime()})`,
+      'User-Agent': clientUserAgent(this.version),
+      'X-FacilPay-Client': clientUserAgent(this.version),
       ...this.defaultHeaders,
       ...extra,
     };
-    if (this.apiKey) headers.Authorization = `Bearer ${this.apiKey}`;
+    if (this.apiKey) headers.Authorization = `ApiKey ${this.apiKey}`;
     if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
     if (correlationId) {
       for (const key of Object.keys(headers)) {
@@ -242,13 +240,12 @@ export class HttpClient {
       responseBody = await this.parseBody(response, responseType);
 
       if (!response.ok) {
-        throw new FacilPayError(
-          `Request failed with status ${response.status}`,
-          response.status,
-          responseBody,
+        throw createApiError(response.status, {
+          body: responseBody,
           requestId,
           correlationId,
-        );
+          retryAfter: parseRetryAfter(response.headers),
+        });
       }
 
       this.logRequest('debug', {
