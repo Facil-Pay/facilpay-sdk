@@ -5,12 +5,7 @@ import type { Paginated, PaginationParams } from '../types';
  * Status of a dispute as returned by the FacilPay API.
  */
 export type DisputeStatus =
-  | 'OPENED'
-  | 'UNDER_REVIEW'
-  | 'EVIDENCE_REQUIRED'
-  | 'WON'
-  | 'LOST'
-  | 'CLOSED';
+  'OPENED' | 'UNDER_REVIEW' | 'EVIDENCE_REQUIRED' | 'WON' | 'LOST' | 'CLOSED';
 
 /**
  * A dispute opened on a payment.

@@ -1,6 +1,5 @@
 import { FacilPayValidationError } from '../errors';
 import type { HttpClient, RequestOptions } from '../http';
-import type { PagePromise } from '../pagination';
 import type { Payment, Refund } from '../types';
 
 /**
@@ -138,11 +137,6 @@ export interface PaymentsRequestOptions extends RequestOptions {
   /** When true, sends the `x-test-mode: true` header. */
   testMode?: boolean;
 }
-
-const MAX_METADATA_ENTRIES = 20;
-const MAX_METADATA_VALUE_LENGTH = 500;
-const MAX_DESCRIPTION_LENGTH = 500;
-const CURRENCY_LENGTH = 3;
 
 /**
  * Payments resource.
