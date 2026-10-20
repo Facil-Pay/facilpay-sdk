@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { FacilPayAPIError } from './errors';
 import { HttpClient } from './http';
 import { FacilPayValidationError } from './errors';
 

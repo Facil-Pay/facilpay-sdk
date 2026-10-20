@@ -61,7 +61,7 @@ describe('FacilPay API key authentication', () => {
     await client.request({ method: 'GET', path: '/v1/ping' });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [, init] = fetchMock.mock.calls[0];
+    const [, init] = fetchMock.mock.calls[0]!;
     const headers = new Headers(init?.headers);
     expect(headers.get('authorization')).toBe('ApiKey fp_test_abc123');
   });

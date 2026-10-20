@@ -1,5 +1,5 @@
-import { FacilPayValidationError } from '../errors';
-import type { HttpClient, RequestOptions } from '../http';
+import { FacilPayValidationError } from '../core/errors';
+import type { BaseRequestOptions, HttpClient } from '../core/http';
 
 /** A single Stellar balance entry. */
 export interface StellarBalance {
@@ -91,14 +91,14 @@ export interface FundTestnetResponse {
 }
 
 /** Per-request options supported by the stellar resource. */
-export interface StellarRequestOptions extends RequestOptions {
+export interface StellarRequestOptions extends BaseRequestOptions {
   /** When true, sends the `x-test-mode: true` header. */
   testMode?: boolean;
 }
 
 const LIVE_KEY_PREFIX = 'fp_live_';
 
-function withTestMode(options?: StellarRequestOptions): RequestOptions | undefined {
+function withTestMode(options?: StellarRequestOptions): BaseRequestOptions | undefined {
   if (!options?.testMode) {
     return options;
   }

@@ -87,7 +87,7 @@ export const FACILPAY_CONTRACT_ERRORS: Record<number, string> = {
 /** Error thrown for contract failures, with a readable name. */
 export class FacilPayContractError extends Error {
   readonly code?: number;
-  readonly name: string;
+  override readonly name: string;
 
   constructor(message: string, code?: number) {
     super(message);

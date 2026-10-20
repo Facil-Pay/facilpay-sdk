@@ -33,6 +33,24 @@ export interface RequestOptions<TBody = unknown> {
   maxRetries?: number;
 }
 
+/**
+ * Per-call options accepted by the {@link HttpClient} convenience helpers
+ * (`get`/`post`/`put`/`patch`/`delete`) and by resource request-option bags.
+ *
+ * Identical to {@link RequestOptions} minus the transport fields the helpers
+ * fill in (`method`, `path`, `body`), plus an optional `params` alias that
+ * helpers forward as the query string.
+ */
+export type BaseRequestOptions = Omit<RequestOptions, 'method' | 'path' | 'body'>;
+
+export interface HelperOptions extends BaseRequestOptions {
+  /**
+   * Query parameters forwarded as the URL query string.
+   * Accepts plain param objects (e.g. `{ page: 2 }`) as well as `query`.
+   */
+  params?: object;
+}
+
 export interface Logger {
   debug?: (...args: (string | object)[]) => unknown;
   info?: (...args: (string | object)[]) => unknown;
@@ -113,6 +131,23 @@ function getEnvironmentLogger(): Logger | undefined {
   return console;
 }
 
+/**
+ * Resolve the message for a failed response, preferring the API's own
+ * `message` field when the body carries one.
+ */
+function extractErrorMessage(body: unknown, status: number): string {
+  if (typeof body === 'string' && body.length > 0) {
+    return body;
+  }
+  if (body !== null && typeof body === 'object') {
+    const message = (body as { message?: unknown }).message;
+    if (typeof message === 'string' && message.length > 0) {
+      return message;
+    }
+  }
+  return `Request failed with status ${status}`;
+}
+
 function responseHeadersToObject(headers: Headers): Record<string, string> {
   const result: Record<string, string> = {};
   headers.forEach((value, key) => {
@@ -149,7 +184,13 @@ export function serializeQuery(query?: QueryParams): string {
 export function buildUrl(baseUrl: string, path: string, query?: QueryParams): string {
   const base = stripTrailingSlashes(baseUrl);
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  return `${base}/v1${normalizedPath}${serializeQuery(query)}`;
+  // Resources pass versioned paths (e.g. `/v1/payments`) while callers may
+  // also pass unversioned ones (e.g. `/payments`). Avoid `/v1/v1/...`.
+  const versionedPath =
+    normalizedPath === '/v1' || normalizedPath.startsWith('/v1/')
+      ? normalizedPath
+      : `/v1${normalizedPath}`;
+  return `${base}${versionedPath}${serializeQuery(query)}`;
 }
 
 /**
@@ -269,7 +310,7 @@ export class HttpClient {
 
   private logRequest(level: 'debug' | 'error', details: Record<string, unknown>): void {
     try {
-      this.logger?.[level]?.(redactForLog(details));
+      this.logger?.[level]?.(redactForLog(details) as string | object);
     } catch {
       // Logging must never change request behavior.
     }

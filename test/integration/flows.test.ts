@@ -118,7 +118,7 @@ describeIntegration('facilpay-api integration', () => {
       expect(received.body).toBeTruthy();
       expect(received.signature).toBeTruthy();
 
-      const event = client.webhooks.constructEvent(
+      const event = await client.webhooks.constructEvent(
         received.body,
         received.signature,
         WEBHOOK_SECRET ?? endpoint.secret ?? '',

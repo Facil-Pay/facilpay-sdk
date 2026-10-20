@@ -1,6 +1,12 @@
 import type { HttpClient } from '../core/http';
 import type { PageEnvelope } from '../core/pagination';
 import type { ResourceRequestOptions } from './request-options';
+import {
+  constructEvent,
+  type ConstructEventOptions,
+  type WebhookPayload,
+} from '../webhooks/verify';
+import type { FacilPayEvent } from '../webhooks/events';
 
 /**
  * Supported webhook event names.
@@ -203,5 +209,19 @@ export class WebhooksResource {
       body: {},
       ...options,
     });
+  }
+
+  /**
+   * Verify a delivery signature and return the parsed event.
+   *
+   * Delegates to {@link constructEvent} from the webhooks module.
+   */
+  constructEvent<T = FacilPayEvent>(
+    payload: WebhookPayload,
+    signature: string,
+    secret: string | string[],
+    options?: ConstructEventOptions,
+  ): Promise<T> {
+    return constructEvent<T>(payload, signature, secret, options);
   }
 }

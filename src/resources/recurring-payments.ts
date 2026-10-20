@@ -71,7 +71,7 @@ function mapStateTransitionError(action: 'pause' | 'resume' | 'cancel', error: u
     const mapped = STATE_TRANSITION_MESSAGES[key];
     throw new FacilPayError(
       mapped ?? message ?? `Cannot ${action} recurring payment in its current state.`,
-      { code: 'recurring_payment_invalid_state', cause: error },
+      { code: 'recurring_payment_invalid_state' },
     );
   }
   throw error;

@@ -1,10 +1,22 @@
 import { HttpClient, type HttpClientOptions } from './core/http';
 import { FacilPayError } from './core/errors';
+import { ApiKeysResource } from './resources/api-keys';
+import { DisputesResource } from './resources/disputes';
+import { PaymentLinksResource } from './resources/payment-links';
+import { Payments } from './resources/payments';
+import { RecurringPaymentsResource } from './resources/recurring-payments';
+import { Stellar } from './resources/stellar';
+import { WebhooksResource } from './resources/webhooks';
 
 export type FacilPayEnvironment = 'test' | 'live';
 
 export interface FacilPayOptions extends HttpClientOptions {
   apiKey?: string;
+  /**
+   * Base URL for hosted payment-link checkout pages, used by
+   * `paymentLinks.checkoutUrl()`. Defaults to `''` (relative links).
+   */
+  checkoutBaseUrl?: string;
 }
 
 const TEST_KEY_PREFIX = 'fp_test_';
@@ -40,6 +52,13 @@ function detectEnvironment(apiKey: string): FacilPayEnvironment {
 
 export class FacilPay {
   readonly http: HttpClient;
+  readonly payments: Payments;
+  readonly paymentLinks: PaymentLinksResource;
+  readonly disputes: DisputesResource;
+  readonly recurringPayments: RecurringPaymentsResource;
+  readonly webhooks: WebhooksResource;
+  readonly apiKeys: ApiKeysResource;
+  readonly stellar: Stellar;
   readonly environment: FacilPayEnvironment;
   readonly isTestMode: boolean;
 
@@ -71,6 +90,14 @@ export class FacilPay {
         Authorization: `ApiKey ${apiKey}`,
       },
     });
+
+    this.payments = new Payments(this.http);
+    this.paymentLinks = new PaymentLinksResource(this.http, options.checkoutBaseUrl);
+    this.disputes = new DisputesResource(this.http);
+    this.recurringPayments = new RecurringPaymentsResource(this.http);
+    this.webhooks = new WebhooksResource(this.http);
+    this.apiKeys = new ApiKeysResource(this.http);
+    this.stellar = new Stellar(this.http);
   }
 
   #warnLiveKeyInBrowser(): void {
@@ -83,8 +110,8 @@ export class FacilPay {
     );
   }
 
-  request<T>(options: Parameters<HttpClient['request']>[0]): Promise<T> {
-    return this.http.request<T>(options);
+  async request<T>(options: Parameters<HttpClient['request']>[0]): Promise<T> {
+    return (await this.http.request<T>(options)).data;
   }
 
   toString(): string {
