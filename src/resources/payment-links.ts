@@ -72,7 +72,7 @@ export class PaymentLinksResource {
     return this.http.post<PaymentLink>('/v1/payment-links', {
       ...params,
       expiresAt: serializeExpiresAt(params.expiresAt),
-    });
+    }, options);
   }
 
   list(params: ListPaymentLinksParams = {}): Promise<ListPaymentLinksResponse> {
