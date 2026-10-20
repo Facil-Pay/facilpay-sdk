@@ -131,6 +131,13 @@ export class Stellar {
   /**
    * List the Stellar balances of the account.
    *
+   * `GET /v1/stellar/balances`
+   *
+   * @param options - Per-request options; set `testMode: true` to send `x-test-mode: true`.
+   * @returns One entry per asset held by the account.
+   * @throws {FacilPayAPIError} When the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
    * @example
    * ```ts
    * const balances = await facilpay.stellar.balances();
@@ -142,6 +149,13 @@ export class Stellar {
 
   /**
    * List the Stellar assets available to the account.
+   *
+   * `GET /v1/stellar/assets`
+   *
+   * @param options - Per-request options; set `testMode: true` to send `x-test-mode: true`.
+   * @returns The available assets.
+   * @throws {FacilPayAPIError} When the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
    *
    * @example
    * ```ts
@@ -155,6 +169,15 @@ export class Stellar {
   /**
    * Add a trustline for an asset.
    *
+   * `POST /v1/stellar/assets/trustline`
+   *
+   * @param params - Asset code and issuer of the trustline.
+   * @param options - Per-request options; set `testMode: true` to send `x-test-mode: true`.
+   * @returns Resolves once the trustline is added.
+   * @throws {FacilPayValidationError} When `assetCode` or `issuer` is missing (no request is sent).
+   * @throws {FacilPayAPIError} When the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
    * @example
    * ```ts
    * await facilpay.stellar.addTrustline({ assetCode: 'USDC', issuer: 'G...' });
@@ -167,6 +190,15 @@ export class Stellar {
 
   /**
    * Remove a trustline for an asset.
+   *
+   * `DELETE /v1/stellar/assets/trustline`
+   *
+   * @param params - Asset code and issuer of the trustline.
+   * @param options - Per-request options; set `testMode: true` to send `x-test-mode: true`.
+   * @returns Resolves once the trustline is removed.
+   * @throws {FacilPayValidationError} When `assetCode` or `issuer` is missing (no request is sent).
+   * @throws {FacilPayAPIError} When the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
    *
    * @example
    * ```ts
@@ -183,6 +215,14 @@ export class Stellar {
 
   /**
    * List Stellar transactions.
+   *
+   * `GET /v1/stellar/transactions`
+   *
+   * @param params - Optional status, asset, date range and paging filters.
+   * @param options - Per-request options; set `testMode: true` to send `x-test-mode: true`.
+   * @returns The matching transactions.
+   * @throws {FacilPayAPIError} When the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
    *
    * @example
    * ```ts
@@ -203,6 +243,16 @@ export class Stellar {
    * Attach a signature to a multisig transaction.
    *
    * Multisig progress is reported through the `transaction.multisig_*` webhooks.
+   *
+   * `POST /v1/stellar/transactions/:id/sign`
+   *
+   * @param id - Transaction id.
+   * @param params - Signature and optional signer public key.
+   * @param options - Per-request options; set `testMode: true` to send `x-test-mode: true`.
+   * @returns The transaction with its updated signature count.
+   * @throws {FacilPayValidationError} When `id` or `signature` is missing (no request is sent).
+   * @throws {FacilPayAPIError} When the transaction does not exist (`404`) or the signature is rejected.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
    *
    * @example
    * ```ts
@@ -230,6 +280,13 @@ export class Stellar {
   /**
    * Retrieve the current Stellar network mode.
    *
+   * `GET /v1/stellar/mode`
+   *
+   * @param options - Per-request options; set `testMode: true` to send `x-test-mode: true`.
+   * @returns The network mode, e.g. `testnet` or `mainnet`.
+   * @throws {FacilPayAPIError} When the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
    * @example
    * ```ts
    * const { mode } = await facilpay.stellar.mode();
@@ -244,6 +301,15 @@ export class Stellar {
    *
    * Only available with a test key. Calling this with a live (`fp_live_`) key
    * throws a {@link FacilPayValidationError} without making a request.
+   *
+   * `POST /v1/stellar/fund-testnet`
+   *
+   * @param params - Address to fund.
+   * @param options - Per-request options; set `testMode: true` to send `x-test-mode: true`.
+   * @returns The funded address and the funding transaction hash.
+   * @throws {FacilPayValidationError} When called with a live key or without an `address`.
+   * @throws {FacilPayAPIError} When the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
    *
    * @example
    * ```ts

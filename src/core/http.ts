@@ -123,6 +123,24 @@ function redactForLog(value: unknown, key?: string): unknown {
   return value;
 }
 
+/**
+ * Whether a request body must be sent as-is rather than JSON-encoded.
+ * `FormData` and `Blob` bodies are passed straight to `fetch`, which sets the
+ * `Content-Type` (including the multipart boundary) itself.
+ */
+export function isRawBody(body: unknown): body is FormData | Blob {
+  return (
+    (typeof FormData !== 'undefined' && body instanceof FormData) ||
+    (typeof Blob !== 'undefined' && body instanceof Blob)
+  );
+}
+
+function serializeBody(body: unknown): BodyInit | undefined {
+  if (body === undefined) return undefined;
+  if (isRawBody(body)) return body;
+  return JSON.stringify(body);
+}
+
 function getEnvironmentLogger(): Logger | undefined {
   const g = globalThis as typeof globalThis & {
     process?: { env?: Record<string, string | undefined> };
@@ -288,9 +306,12 @@ export class HttpClient {
     extra?: Record<string, string>,
     idempotencyKey?: string,
     correlationId?: string,
+    rawBody = false,
   ): Record<string, string> {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      // Raw (FormData/Blob) bodies let `fetch` set the Content-Type so the
+      // multipart boundary is correct.
+      ...(rawBody ? {} : { 'Content-Type': 'application/json' }),
       Accept: 'application/json',
       'User-Agent': clientUserAgent(this.version),
       'X-FacilPay-Client': clientUserAgent(this.version),
@@ -345,7 +366,12 @@ export class HttpClient {
     }
 
     const url = buildUrl(this.baseUrl, path, query);
-    const requestHeaders = this.buildHeaders(headers, idempotencyKey, correlationId);
+    const requestHeaders = this.buildHeaders(
+      headers,
+      idempotencyKey,
+      correlationId,
+      isRawBody(body),
+    );
     const canRetryRequest = this.isRetryableRequest(method, requestHeaders, idempotencyKey);
     const startedAt = Date.now();
 
@@ -358,7 +384,7 @@ export class HttpClient {
       const response = await this.fetchImpl(url, {
         method,
         headers: requestHeaders,
-        body: body === undefined ? undefined : JSON.stringify(body),
+        body: serializeBody(body),
         signal: controller.signal,
       });
 
@@ -390,7 +416,7 @@ export class HttpClient {
         const response = await this.fetchImpl(url, {
           method,
           headers: requestHeaders,
-          body: body === undefined ? undefined : JSON.stringify(body),
+          body: serializeBody(body),
           signal: controller.signal,
         });
 

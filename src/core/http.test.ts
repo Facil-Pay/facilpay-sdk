@@ -134,3 +134,41 @@ describe('HttpClient diagnostics', () => {
     expect(debug).toHaveBeenCalledWith(expect.objectContaining({ path: '/payments' }));
   });
 });
+
+describe('HttpClient multipart bodies', () => {
+  it('passes FormData through untouched and lets fetch set the Content-Type', async () => {
+    const fetch = createFetch();
+    const http = new HttpClient({ fetch });
+    const form = new FormData();
+    form.append('file', new Blob(['receipt'], { type: 'text/plain' }), 'receipt.txt');
+
+    await http.request({ method: 'POST', path: '/disputes/dsp_123/evidence', body: form });
+
+    const init = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as RequestInit;
+    expect(init.body).toBe(form);
+    expect(Object.keys(init.headers as Record<string, string>)).not.toContain('Content-Type');
+  });
+
+  it('passes Blob bodies through untouched', async () => {
+    const fetch = createFetch();
+    const http = new HttpClient({ fetch });
+    const blob = new Blob(['raw'], { type: 'application/octet-stream' });
+
+    await http.request({ method: 'POST', path: '/uploads', body: blob });
+
+    const init = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as RequestInit;
+    expect(init.body).toBe(blob);
+    expect(Object.keys(init.headers as Record<string, string>)).not.toContain('Content-Type');
+  });
+
+  it('still JSON-encodes plain object bodies', async () => {
+    const fetch = createFetch();
+    const http = new HttpClient({ fetch });
+
+    await http.request({ method: 'POST', path: '/payments', body: { amount: 10 } });
+
+    const init = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as RequestInit;
+    expect(init.body).toBe(JSON.stringify({ amount: 10 }));
+    expect(init.headers).toEqual(expect.objectContaining({ 'Content-Type': 'application/json' }));
+  });
+});

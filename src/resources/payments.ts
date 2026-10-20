@@ -149,6 +149,18 @@ export class Payments {
   /**
    * Create a new payment.
    *
+   * An `Idempotency-Key` is generated automatically (and reused across
+   * retries) unless you pass `options.idempotencyKey`.
+   *
+   * `POST /v1/payments`
+   *
+   * @param params - Amount, currency and optional payment details.
+   * @param options - Per-request options; set `testMode: true` to send `x-test-mode: true`.
+   * @returns The created payment.
+   * @throws {FacilPayValidationError} When the parameters fail client-side validation (no request is sent).
+   * @throws {FacilPayAPIError} When the API rejects the request (e.g. `422` idempotency key reused with a different body).
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
    * @example
    * ```ts
    * const payment = await facilpay.payments.create({
@@ -167,6 +179,17 @@ export class Payments {
    * Retrieve a single payment by id.
    *
    * `GET /v1/payments/:id`
+   *
+   * @param id - Payment id.
+   * @param options - Per-request options; set `testMode: true` to send `x-test-mode: true`.
+   * @returns The payment.
+   * @throws {FacilPayAPIError} When the payment does not exist (`404`) or the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
+   * @example
+   * ```ts
+   * const payment = await facilpay.payments.retrieve('pay_123');
+   * ```
    */
   retrieve(id: string, options?: PaymentsRequestOptions): Promise<Payment> {
     return this.http.get<Payment>(
@@ -179,6 +202,17 @@ export class Payments {
    * List payments with optional filters.
    *
    * `GET /v1/payments`
+   *
+   * @param params - Optional status, date range, paging and sorting filters.
+   * @param options - Per-request options; set `testMode: true` to send `x-test-mode: true`.
+   * @returns A page of payments.
+   * @throws {FacilPayAPIError} When the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
+   * @example
+   * ```ts
+   * const page = await facilpay.payments.list({ status: 'succeeded', limit: 20 });
+   * ```
    */
   list(
     params?: ListPaymentsParams,
@@ -191,9 +225,20 @@ export class Payments {
   }
 
   /**
-   * Cancel a payment.
+   * Cancel a payment that has not settled yet.
    *
    * `POST /v1/payments/:id/cancel`
+   *
+   * @param id - Payment id.
+   * @param options - Per-request options; set `testMode: true` to send `x-test-mode: true`.
+   * @returns The cancelled payment.
+   * @throws {FacilPayAPIError} When the payment does not exist (`404`) or can no longer be cancelled (`409`).
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
+   * @example
+   * ```ts
+   * const payment = await facilpay.payments.cancel('pay_123');
+   * ```
    */
   cancel(id: string, options?: PaymentsRequestOptions): Promise<Payment> {
     return this.http.post<Payment>(
@@ -210,9 +255,15 @@ export class Payments {
    * `REFUNDED`. Passing an `amount` issues a partial refund and moves the payment
    * to `PARTIALLY_REFUNDED`. A successful refund emits the `refund.issued` webhook.
    *
-   * Refunding an already-refunded payment surfaces the API error as a
-   * `FacilPayConflictError` (or `FacilPayValidationError` when the API rejects the
-   * amount), depending on what the API returns.
+   * `POST /v1/payments/:id/refund`
+   *
+   * @param paymentId - Id of the payment to refund.
+   * @param params - Optional partial `amount` and `reason`.
+   * @param options - Per-request options; set `testMode: true` to send `x-test-mode: true`.
+   * @returns The issued refund.
+   * @throws {FacilPayValidationError} When `amount` is provided but not greater than 0 (no request is sent).
+   * @throws {FacilPayAPIError} When the payment is already refunded (`409`) or the API rejects the amount (`422`).
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
    *
    * @example
    * ```ts
@@ -244,6 +295,15 @@ export class Payments {
    *
    * Note: bulk creation does **not** support idempotency keys.
    *
+   * `POST /v1/payments/bulk`
+   *
+   * @param items - Payments to create; each is validated like {@link Payments.create}.
+   * @param options - Per-request options; set `testMode: true` to send `x-test-mode: true`.
+   * @returns The per-item `successes` and `failures`.
+   * @throws {FacilPayValidationError} When `items` is empty or any item fails client-side validation.
+   * @throws {FacilPayAPIError} When the API rejects the whole batch.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
    * @example
    * ```ts
    * const result = await facilpay.payments.createBulk([
@@ -273,6 +333,14 @@ export class Payments {
   /**
    * Export payments as CSV text.
    *
+   * `GET /v1/payments/export`
+   *
+   * @param params - Optional status, date range and merchant filters.
+   * @param options - Per-request options; set `testMode: true` to send `x-test-mode: true`.
+   * @returns The CSV export as a string.
+   * @throws {FacilPayAPIError} When the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
    * @example
    * ```ts
    * const csv = await facilpay.payments.export({ status: 'succeeded' });
@@ -289,6 +357,14 @@ export class Payments {
   /**
    * Retrieve the timeline of events for a payment.
    *
+   * `GET /v1/payments/:id/timeline`
+   *
+   * @param id - Payment id.
+   * @param options - Per-request options; set `testMode: true` to send `x-test-mode: true`.
+   * @returns The ordered timeline entries of the payment.
+   * @throws {FacilPayAPIError} When the payment does not exist (`404`) or the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
    * @example
    * ```ts
    * const timeline = await facilpay.payments.timeline('pay_123');
@@ -303,6 +379,14 @@ export class Payments {
 
   /**
    * Retrieve the invoice attached to a payment.
+   *
+   * `GET /v1/payments/:id/invoice`
+   *
+   * @param id - Payment id.
+   * @param options - Per-request options; set `testMode: true` to send `x-test-mode: true`.
+   * @returns The payment invoice.
+   * @throws {FacilPayAPIError} When the payment does not exist (`404`) or the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
    *
    * @example
    * ```ts
@@ -322,6 +406,14 @@ export class Payments {
    * This endpoint does **not** require authentication, so it can be called from
    * unauthenticated contexts (e.g. a customer facing checkout page).
    *
+   * `GET /v1/payments/invoice/:token`
+   *
+   * @param token - Shareable invoice token.
+   * @param options - Per-request options; set `testMode: true` to send `x-test-mode: true`.
+   * @returns The invoice.
+   * @throws {FacilPayAPIError} When the token is unknown (`404`) or the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
    * @example
    * ```ts
    * const invoice = await facilpay.payments.publicInvoice('inv_tok_123');
@@ -339,6 +431,15 @@ export class Payments {
    *
    * Returns a data URL when the API responds with a textual content type, or the
    * raw bytes when the API responds with a binary content type.
+   *
+   * `GET /v1/payments/:id/qr`
+   *
+   * @param id - Payment id.
+   * @param params - Optional image `format` (`png` or `svg`).
+   * @param options - Per-request options; set `testMode: true` to send `x-test-mode: true`.
+   * @returns The QR code as a data URL or raw bytes.
+   * @throws {FacilPayAPIError} When the payment does not exist (`404`) or the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
    *
    * @example
    * ```ts
@@ -358,7 +459,15 @@ export class Payments {
   }
 
   /**
-   * Retrieve a payment by its identifier.
+   * Retrieve a single payment by id.
+   *
+   * `GET /v1/payments/:id`
+   *
+   * @param id - Payment id.
+   * @param options - Per-request options; set `testMode: true` to send `x-test-mode: true`.
+   * @returns The payment.
+   * @throws {FacilPayAPIError} When the payment does not exist (`404`) or the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
    *
    * @example
    * ```ts
@@ -372,10 +481,20 @@ export class Payments {
   /**
    * List payments, optionally filtered.
    *
+   * Returns a page that is also an `AsyncIterable`: `await` it for the first
+   * page, or use `for await` to iterate every payment across all pages.
+   *
+   * `GET /v1/payments`
+   *
+   * @param params - Optional status, date range, paging and sorting filters.
+   * @param options - Per-request options; set `testMode: true` to send `x-test-mode: true`.
+   * @returns A page of payments that can be iterated across all pages.
+   * @throws {FacilPayAPIError} When the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
    * @example
    * ```ts
-   * const page = await facilpay.payments.list({ status: 'succeeded', limit: 20 });
-   * for await (const payment of page) {
+   * for await (const payment of facilpay.payments.list({ status: 'succeeded' })) {
    *   console.log(payment.id);
    * }
    * ```
@@ -386,6 +505,14 @@ export class Payments {
 
   /**
    * Cancel a payment that has not settled yet.
+   *
+   * `POST /v1/payments/:id/cancel`
+   *
+   * @param id - Payment id.
+   * @param options - Per-request options; set `testMode: true` to send `x-test-mode: true`.
+   * @returns The cancelled payment.
+   * @throws {FacilPayAPIError} When the payment does not exist (`404`) or can no longer be cancelled (`409`).
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
    *
    * @example
    * ```ts

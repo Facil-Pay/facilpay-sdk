@@ -80,6 +80,27 @@ function mapStateTransitionError(action: 'pause' | 'resume' | 'cancel', error: u
 export class RecurringPaymentsResource {
   constructor(private readonly client: HttpClient) {}
 
+  /**
+   * Create a recurring payment (subscription) for a customer.
+   *
+   * `POST /v1/recurring-payments`
+   *
+   * @param params - Customer, amount, currency, interval and optional trial/start date.
+   * @param options - Per-request options (headers, idempotency key, signal, timeout, ...).
+   * @returns The created recurring payment.
+   * @throws {FacilPayAPIError} When the API rejects the request (e.g. `422` invalid interval).
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
+   * @example
+   * ```ts
+   * const subscription = await facilpay.recurringPayments.create({
+   *   customerId: 'cus_123',
+   *   amount: 9.99,
+   *   currency: 'USD',
+   *   interval: 'monthly',
+   * });
+   * ```
+   */
   create(params: CreateRecurringPaymentDto, options?: ResourceRequestOptions): Promise<RecurringPayment> {
     return this.client.request<RecurringPayment>({
       method: 'POST',
@@ -93,6 +114,20 @@ export class RecurringPaymentsResource {
    * List recurring payments. Returns a page that is also an `AsyncIterable`:
    * `await` it for the first page, or use `for await` to iterate every
    * recurring payment across all pages.
+   *
+   * `GET /v1/recurring-payments`
+   *
+   * @param params - Optional `customerId`/`status` filters and page size (`limit`).
+   * @returns A page of recurring payments that can be iterated across all pages.
+   * @throws {FacilPayAPIError} When the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
+   * @example
+   * ```ts
+   * for await (const subscription of facilpay.recurringPayments.list({ status: 'active' })) {
+   *   console.log(subscription.id);
+   * }
+   * ```
    */
   list(params?: ListRecurringPaymentsParams): PagePromise<RecurringPayment> {
     const limit = params?.limit ?? 20;
@@ -107,6 +142,22 @@ export class RecurringPaymentsResource {
     });
   }
 
+  /**
+   * Retrieve a recurring payment by id.
+   *
+   * `GET /v1/recurring-payments/:id`
+   *
+   * @param id - Recurring payment id.
+   * @param options - Per-request options (headers, idempotency key, signal, timeout, ...).
+   * @returns The recurring payment.
+   * @throws {FacilPayAPIError} When the recurring payment does not exist (`404`) or the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
+   * @example
+   * ```ts
+   * const subscription = await facilpay.recurringPayments.retrieve('rp_123');
+   * ```
+   */
   retrieve(id: string, options?: ResourceRequestOptions): Promise<RecurringPayment> {
     return this.client.request<RecurringPayment>({
       method: 'GET',
@@ -115,6 +166,23 @@ export class RecurringPaymentsResource {
     });
   }
 
+  /**
+   * Update the amount, description or metadata of a recurring payment.
+   *
+   * `PATCH /v1/recurring-payments/:id`
+   *
+   * @param id - Recurring payment id.
+   * @param params - Fields to change.
+   * @param options - Per-request options (headers, idempotency key, signal, timeout, ...).
+   * @returns The updated recurring payment.
+   * @throws {FacilPayAPIError} When the recurring payment does not exist (`404`) or the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
+   * @example
+   * ```ts
+   * await facilpay.recurringPayments.update('rp_123', { amount: 12.99 });
+   * ```
+   */
   update(
     id: string,
     params: UpdateRecurringPaymentDto,
@@ -128,14 +196,65 @@ export class RecurringPaymentsResource {
     });
   }
 
+  /**
+   * Pause an active recurring payment. No charges are made while paused.
+   *
+   * `POST /v1/recurring-payments/:id/pause`
+   *
+   * @param id - Recurring payment id.
+   * @param options - Per-request options (headers, idempotency key, signal, timeout, ...).
+   * @returns The paused recurring payment.
+   * @throws {FacilPayError} With code `recurring_payment_invalid_state` when the current status does not allow this transition.
+   * @throws {FacilPayAPIError} When the recurring payment does not exist (`404`) or the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
+   * @example
+   * ```ts
+   * await facilpay.recurringPayments.pause('rp_123');
+   * ```
+   */
   pause(id: string, options?: ResourceRequestOptions): Promise<RecurringPayment> {
     return this.transition(id, 'pause', options);
   }
 
+  /**
+   * Resume a paused recurring payment.
+   *
+   * `POST /v1/recurring-payments/:id/resume`
+   *
+   * @param id - Recurring payment id.
+   * @param options - Per-request options (headers, idempotency key, signal, timeout, ...).
+   * @returns The resumed recurring payment.
+   * @throws {FacilPayError} With code `recurring_payment_invalid_state` when the current status does not allow this transition.
+   * @throws {FacilPayAPIError} When the recurring payment does not exist (`404`) or the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
+   * @example
+   * ```ts
+   * await facilpay.recurringPayments.resume('rp_123');
+   * ```
+   */
   resume(id: string, options?: ResourceRequestOptions): Promise<RecurringPayment> {
     return this.transition(id, 'resume', options);
   }
 
+  /**
+   * Cancel a recurring payment. Cancelled recurring payments cannot be resumed.
+   *
+   * `POST /v1/recurring-payments/:id/cancel`
+   *
+   * @param id - Recurring payment id.
+   * @param options - Per-request options (headers, idempotency key, signal, timeout, ...).
+   * @returns The cancelled recurring payment.
+   * @throws {FacilPayError} With code `recurring_payment_invalid_state` when the current status does not allow this transition.
+   * @throws {FacilPayAPIError} When the recurring payment does not exist (`404`) or the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
+   * @example
+   * ```ts
+   * await facilpay.recurringPayments.cancel('rp_123');
+   * ```
+   */
   cancel(id: string, options?: ResourceRequestOptions): Promise<RecurringPayment> {
     return this.transition(id, 'cancel', options);
   }
