@@ -104,6 +104,22 @@ export class WebhooksResource {
    *
    * The returned `secret` (`whsec_…`) is only returned in full here and after
    * rotation. Store it immediately — it cannot be retrieved again afterwards.
+   *
+   * `POST /v1/webhooks`
+   *
+   * @param params - HTTPS URL and subscribed events.
+   * @param options - Per-request options (headers, idempotency key, signal, timeout, ...).
+   * @returns The registered endpoint, including its signing `secret`.
+   * @throws {FacilPayAPIError} When the API rejects the request (e.g. `422` invalid URL).
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
+   * @example
+   * ```ts
+   * const endpoint = await facilpay.webhooks.create({
+   *   url: 'https://example.com/webhooks/facilpay',
+   *   events: ['payment.succeeded'],
+   * });
+   * ```
    */
   create(params: CreateWebhookParams, options?: ResourceRequestOptions): Promise<WebhookEndpoint> {
     return this.http.request<WebhookEndpoint>({
@@ -114,7 +130,21 @@ export class WebhooksResource {
     });
   }
 
-  /** List all registered webhook endpoints. */
+  /**
+   * List all registered webhook endpoints.
+   *
+   * `GET /v1/webhooks`
+   *
+   * @param options - Per-request options (headers, idempotency key, signal, timeout, ...).
+   * @returns The registered endpoints.
+   * @throws {FacilPayAPIError} When the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
+   * @example
+   * ```ts
+   * const endpoints = await facilpay.webhooks.list();
+   * ```
+   */
   list(options?: ResourceRequestOptions): Promise<WebhookEndpoint[]> {
     return this.http.request<WebhookEndpoint[]>({
       method: 'GET',
@@ -123,7 +153,22 @@ export class WebhooksResource {
     });
   }
 
-  /** Fetch a single webhook endpoint by id. */
+  /**
+   * Fetch a single webhook endpoint by id.
+   *
+   * `GET /v1/webhooks/:id`
+   *
+   * @param id - Webhook endpoint id.
+   * @param options - Per-request options (headers, idempotency key, signal, timeout, ...).
+   * @returns The webhook endpoint.
+   * @throws {FacilPayAPIError} When the webhook endpoint does not exist (`404`) or the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
+   * @example
+   * ```ts
+   * const endpoint = await facilpay.webhooks.retrieve('wh_123');
+   * ```
+   */
   retrieve(id: string, options?: ResourceRequestOptions): Promise<WebhookEndpoint> {
     return this.http.request<WebhookEndpoint>({
       method: 'GET',
@@ -136,6 +181,20 @@ export class WebhooksResource {
    * List the delivery attempts of a webhook endpoint (paginated).
    *
    * Use this to find a `deliveryId` for {@link retryDelivery}.
+   *
+   * `GET /v1/webhooks/:id/deliveries`
+   *
+   * @param id - Webhook endpoint id.
+   * @param params - Optional paging, status and event filters.
+   * @param options - Per-request options (headers, idempotency key, signal, timeout, ...).
+   * @returns A page of delivery attempts.
+   * @throws {FacilPayAPIError} When the webhook endpoint does not exist (`404`) or the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
+   * @example
+   * ```ts
+   * const { data } = await facilpay.webhooks.listDeliveries('wh_123', { status: 'failed' });
+   * ```
    */
   listDeliveries(
     id: string,
@@ -150,7 +209,23 @@ export class WebhooksResource {
     });
   }
 
-  /** Update a webhook endpoint's URL, subscribed events, or active state. */
+  /**
+   * Update a webhook endpoint's URL, subscribed events, or active state.
+   *
+   * `PATCH /v1/webhooks/:id`
+   *
+   * @param id - Webhook endpoint id.
+   * @param params - Fields to change.
+   * @param options - Per-request options (headers, idempotency key, signal, timeout, ...).
+   * @returns The updated webhook endpoint.
+   * @throws {FacilPayAPIError} When the webhook endpoint does not exist (`404`) or the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
+   * @example
+   * ```ts
+   * await facilpay.webhooks.update('wh_123', { isActive: false });
+   * ```
+   */
   update(
     id: string,
     params: UpdateWebhookParams,
@@ -164,7 +239,22 @@ export class WebhooksResource {
     });
   }
 
-  /** Delete a webhook endpoint. */
+  /**
+   * Delete a webhook endpoint.
+   *
+   * `DELETE /v1/webhooks/:id`
+   *
+   * @param id - Webhook endpoint id.
+   * @param options - Per-request options (headers, idempotency key, signal, timeout, ...).
+   * @returns Resolves once the endpoint is deleted.
+   * @throws {FacilPayAPIError} When the webhook endpoint does not exist (`404`) or the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
+   * @example
+   * ```ts
+   * await facilpay.webhooks.delete('wh_123');
+   * ```
+   */
   delete(id: string, options?: ResourceRequestOptions): Promise<void> {
     return this.http.request<void>({
       method: 'DELETE',
@@ -173,7 +263,22 @@ export class WebhooksResource {
     });
   }
 
-  /** Send a test delivery to a webhook endpoint. */
+  /**
+   * Send a test delivery to a webhook endpoint.
+   *
+   * `POST /v1/webhooks/:id/test`
+   *
+   * @param id - Webhook endpoint id.
+   * @param options - Per-request options (headers, idempotency key, signal, timeout, ...).
+   * @returns Whether the test event was delivered and the status code received.
+   * @throws {FacilPayAPIError} When the webhook endpoint does not exist (`404`) or the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
+   * @example
+   * ```ts
+   * const { delivered } = await facilpay.webhooks.sendTest('wh_123');
+   * ```
+   */
   sendTest(id: string, options?: ResourceRequestOptions): Promise<WebhookTestResult> {
     return this.http.request<WebhookTestResult>({
       method: 'POST',
@@ -188,6 +293,19 @@ export class WebhooksResource {
    *
    * The new `secret` (`whsec_…`) is only returned in full here. Store it
    * immediately — it cannot be retrieved again afterwards.
+   *
+   * `POST /v1/webhooks/:id/rotate-secret`
+   *
+   * @param id - Webhook endpoint id.
+   * @param options - Per-request options (headers, idempotency key, signal, timeout, ...).
+   * @returns The endpoint with its new signing `secret`.
+   * @throws {FacilPayAPIError} When the webhook endpoint does not exist (`404`) or the API rejects the request.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
+   * @example
+   * ```ts
+   * const { secret } = await facilpay.webhooks.rotateSecret('wh_123');
+   * ```
    */
   rotateSecret(id: string, options?: ResourceRequestOptions): Promise<WebhookEndpoint> {
     return this.http.request<WebhookEndpoint>({
@@ -198,7 +316,22 @@ export class WebhooksResource {
     });
   }
 
-  /** Retry a previously failed webhook delivery. */
+  /**
+   * Retry a previously failed webhook delivery.
+   *
+   * `POST /v1/webhooks/deliveries/:deliveryId/retry`
+   *
+   * @param deliveryId - Delivery id, e.g. from {@link listDeliveries}.
+   * @param options - Per-request options (headers, idempotency key, signal, timeout, ...).
+   * @returns The delivery id and its new status.
+   * @throws {FacilPayAPIError} When the delivery does not exist (`404`) or the API rejects the retry.
+   * @throws {FacilPayConnectionError} When the API cannot be reached or the request times out.
+   *
+   * @example
+   * ```ts
+   * await facilpay.webhooks.retryDelivery('whd_123');
+   * ```
+   */
   retryDelivery(
     deliveryId: string,
     options?: ResourceRequestOptions,
@@ -214,7 +347,23 @@ export class WebhooksResource {
   /**
    * Verify a delivery signature and return the parsed event.
    *
-   * Delegates to {@link constructEvent} from the webhooks module.
+   * Delegates to {@link constructEvent} from the webhooks module. Makes no request.
+   *
+   * @param payload - Raw request body, exactly as received.
+   * @param signature - Value of the `X-FacilPay-Signature` header.
+   * @param secret - Endpoint signing secret(s) (`whsec_…`); pass several during rotation.
+   * @param options - Optional verification settings such as timestamp tolerance.
+   * @returns The verified, parsed event.
+   * @throws {FacilPaySignatureVerificationError} When the signature is missing, malformed, stale or does not match.
+   *
+   * @example
+   * ```ts
+   * const event = await facilpay.webhooks.constructEvent(
+   *   rawBody,
+   *   req.headers['x-facilpay-signature'],
+   *   process.env.FACILPAY_WEBHOOK_SECRET!,
+   * );
+   * ```
    */
   constructEvent<T = FacilPayEvent>(
     payload: WebhookPayload,

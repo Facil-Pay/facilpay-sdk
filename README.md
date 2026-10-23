@@ -390,6 +390,8 @@ try {
 
 Include `err.requestId` when you contact support. It matches the `x-request-id` header returned by the API.
 
+See the [Error Handling guide](docs/errors.md) for the full error hierarchy, how each HTTP status maps to an error class, how to use `requestId` / `correlationId` in support tickets, and which failures are safe to retry.
+
 ## Idempotency & Retries
 
 - `payments.create()` always sends an `Idempotency-Key` header. If you don't pass one, the SDK generates a UUID v4 and **reuses it across automatic retries**, so a retry after a timeout never creates a second payment.

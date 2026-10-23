@@ -90,4 +90,49 @@ describe('DisputesResource', () => {
 
     await expect(disputes.retrieve('dsp_missing')).rejects.toBe(apiError);
   });
+
+  describe('uploadEvidence', () => {
+    let post: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      post = vi.fn().mockResolvedValue({ id: 'dsp_123' });
+      disputes = new DisputesResource(
+        { post } as unknown as ConstructorParameters<typeof DisputesResource>[0],
+      );
+    });
+
+    it('posts a multipart form with the file to /v1/disputes/:id/evidence', async () => {
+      const file = new Blob(['receipt'], { type: 'application/pdf' });
+
+      const result = await disputes.uploadEvidence('dsp_123', file, {
+        filename: 'receipt.pdf',
+        fields: { description: 'Proof of delivery' },
+      });
+
+      expect(post).toHaveBeenCalledWith('/v1/disputes/dsp_123/evidence', expect.any(FormData));
+      const form = post.mock.calls[0]?.[1] as FormData;
+      const uploaded = form.get('file') as File;
+      expect(uploaded).toBeInstanceOf(Blob);
+      expect(uploaded.name).toBe('receipt.pdf');
+      expect(form.get('description')).toBe('Proof of delivery');
+      expect(result).toEqual({ id: 'dsp_123' });
+    });
+
+    it('sends a prebuilt FormData untouched', async () => {
+      const form = new FormData();
+      form.append('evidence', new Blob(['x']), 'x.txt');
+
+      await disputes.uploadEvidence('dsp_123', form);
+
+      expect(post).toHaveBeenCalledWith('/v1/disputes/dsp_123/evidence', form);
+    });
+
+    it('defaults the file name to "evidence"', async () => {
+      await disputes.uploadEvidence('dsp_123', new Blob(['x']));
+
+      const form = post.mock.calls[0]?.[1] as FormData;
+      expect((form.get('file') as File).name).toBe('evidence');
+    });
+  });
 });
+
