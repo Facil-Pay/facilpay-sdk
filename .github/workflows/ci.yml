@@ -7,8 +7,11 @@ on:
 
 jobs:
   test:
-    name: Test
+    name: Test (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -16,29 +19,35 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ matrix.node-version }}
           cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Install example dependencies
         run: |
-          npm install --prefix examples/express
-          npm install --prefix examples/nextjs
-          npm install --prefix examples/node-script
+          npm ci --prefix examples/express
+          npm ci --prefix examples/nextjs
+          npm ci --prefix examples/node-script
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
 
       - name: Build SDK package
         run: npm run build
+
+      - name: Typecheck examples
+        run: npm run typecheck:examples
 
       - name: Check publish layout (publint)
         run: npm run publint
 
       - name: Check type resolutions (attw)
         run: npm run attw
-
-      - name: Typecheck examples
-        run: npm run typecheck:examples
-
-      - name: Run tests with coverage
-        run: npm test -- --coverage
