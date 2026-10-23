@@ -160,6 +160,8 @@ const facilpay = new FacilPay({
 | `headers`    | `Record<string, string>` | `{}`                      | Extra headers sent with every request           |
 | `logger`     | `Logger`                 | `undefined`               | Receives request/response debug logs            |
 
+See [docs/configuration.md](docs/configuration.md) for the full reference, including environment variables, custom `fetch` for proxies and edge runtimes.
+
 ## Usage
 
 ### Payments

@@ -120,3 +120,68 @@ describe('FacilPay API key authentication', () => {
     }
   });
 });
+
+describe('FacilPay option validation', () => {
+  const apiKey = 'fp_test_1234567890';
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it.each([-1, 0, Number.NaN, Number.POSITIVE_INFINITY, '1000' as unknown as number])(
+    'rejects an invalid timeout (%s)',
+    (timeout) => {
+      expect(() => new FacilPay({ apiKey, timeout })).toThrow(FacilPayError);
+      expect(() => new FacilPay({ apiKey, timeout })).toThrow(/`timeout`/);
+    },
+  );
+
+  it('accepts a positive timeout', () => {
+    expect(new FacilPay({ apiKey, timeout: 5_000 }).http.timeout).toBe(5_000);
+  });
+
+  it.each([-1, 1.5, Number.NaN, '2' as unknown as number])(
+    'rejects an invalid maxRetries (%s)',
+    (maxRetries) => {
+      expect(() => new FacilPay({ apiKey, maxRetries })).toThrow(FacilPayError);
+      expect(() => new FacilPay({ apiKey, maxRetries })).toThrow(/`maxRetries`/);
+    },
+  );
+
+  it('accepts maxRetries of 0', () => {
+    expect(new FacilPay({ apiKey, maxRetries: 0 }).http.maxRetries).toBe(0);
+  });
+
+  it.each(['api.facilpay.io', 'localhost:3000', 'ftp://api.facilpay.io', ''])(
+    'rejects a baseUrl without an http(s) protocol (%j)',
+    (baseUrl) => {
+      expect(() => new FacilPay({ apiKey, baseUrl })).toThrow(FacilPayError);
+      expect(() => new FacilPay({ apiKey, baseUrl })).toThrow(/`baseUrl`/);
+    },
+  );
+
+  it.each(['https://api.facilpay.io', 'http://localhost:3000/'])(
+    'accepts a valid baseUrl (%s)',
+    (baseUrl) => {
+      expect(() => new FacilPay({ apiKey, baseUrl })).not.toThrow();
+    },
+  );
+
+  it('rejects a non-function fetch option', () => {
+    expect(() => new FacilPay({ apiKey, fetch: 'nope' as unknown as typeof fetch })).toThrow(
+      /`fetch`/,
+    );
+  });
+
+  it('throws a helpful error when no fetch implementation is available', () => {
+    vi.stubGlobal('fetch', undefined);
+    expect(() => new FacilPay({ apiKey })).toThrow(FacilPayError);
+    expect(() => new FacilPay({ apiKey })).toThrow(/No `fetch` implementation found/);
+  });
+
+  it('uses options.fetch when the runtime has no global fetch', () => {
+    vi.stubGlobal('fetch', undefined);
+    const customFetch = vi.fn() as unknown as typeof fetch;
+    expect(() => new FacilPay({ apiKey, fetch: customFetch })).not.toThrow();
+  });
+});
