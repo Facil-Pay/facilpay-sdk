@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "predev": "npm install --prefix ../.. && npm run build --prefix ../..",
-    "dev": "tsx src/index.ts",
+    "dev": "node init && tsx src/index.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
