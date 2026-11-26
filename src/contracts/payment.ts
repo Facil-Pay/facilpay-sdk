@@ -70,6 +70,36 @@ export interface SubmitResult {
   result?: unknown;
 }
 
+/** Options for subscribing to contract events. */
+export interface ContractEventsOptions {
+  /** Ledger to start streaming from (inclusive). */
+  startLedger: number;
+  /** Optional topic filter (e.g. `['payment', 'created']`). */
+  topics?: string[];
+  /** Optional abort signal to stop the iterator. */
+  signal?: AbortSignal;
+  /** Base backoff in ms between polls (defaults to 1000). */
+  pollIntervalMs?: number;
+  /** Maximum backoff in ms (defaults to 30000). */
+  maxPollIntervalMs?: number;
+}
+
+/** A decoded, typed contract event. */
+export interface ContractEvent<T = unknown> {
+  /** Event id, usable as a pagination cursor. */
+  id: string;
+  /** Ledger the event was emitted in. */
+  ledger: number;
+  /** Contract that emitted the event. */
+  contractId: string;
+  /** Event topics, decoded to native values. */
+  topics: unknown[];
+  /** Event payload, decoded to a native value. */
+  value: T;
+  /** Whether the transaction that emitted the event succeeded. */
+  inSuccessfulContractCall: boolean;
+}
+
 /** Contract error codes mapped to readable names. */
 export const FACILPAY_CONTRACT_ERRORS: Record<number, string> = {
   1: 'Unauthorized',
@@ -122,6 +152,92 @@ function decodePayment(raw: unknown): Payment {
     createdAt: BigInt(value.created_at as bigint),
     expiresAt: BigInt(value.expires_at as bigint),
   };
+}
+
+function decodeEvent(raw: SorobanRpc.Api.EventResponse): ContractEvent {
+  return {
+    id: raw.id,
+    ledger: raw.ledger,
+    contractId: raw.contractId,
+    topics: (raw.topic ?? []).map((t) => scValToNative(t)),
+    value: scValToNative(raw.value),
+    inSuccessfulContractCall: raw.inSuccessfulContractCall,
+  };
+}
+
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'));
+      return;
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(new DOMException('Aborted', 'AbortError'));
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+/**
+ * Shared helper that polls Soroban RPC `getEvents` and yields decoded events.
+ *
+ * Usable by the payment, escrow and refund contract bindings. Handles cursor
+ * pagination, exponential backoff between polls, and `AbortSignal` cancellation.
+ */
+export async function* streamContractEvents(
+  server: SorobanRpc.Server,
+  contractId: string,
+  options: ContractEventsOptions,
+): AsyncGenerator<ContractEvent, void, unknown> {
+  const { startLedger, topics, signal } = options;
+  const baseInterval = options.pollIntervalMs ?? 1000;
+  const maxInterval = options.maxPollIntervalMs ?? 30000;
+
+  let cursor: string | undefined;
+  let backoff = baseInterval;
+
+  while (!signal?.aborted) {
+    let response: SorobanRpc.Api.GetEventsResponse;
+    try {
+      response = await server.getEvents({
+        startLedger: cursor ? undefined : startLedger,
+        cursor,
+        filters: [
+          {
+            type: 'contract',
+            contractIds: [contractId],
+            ...(topics && topics.length > 0
+              ? { topics: [topics.map((t) => nativeToScVal(t, { type: 'symbol' }).toXDR('base64'))] }
+              : {}),
+          },
+        ],
+        limit: 100,
+      });
+      backoff = baseInterval;
+    } catch (err) {
+      if (signal?.aborted) return;
+      await sleep(backoff, signal);
+      backoff = Math.min(backoff * 2, maxInterval);
+      continue;
+    }
+
+    for (const event of response.events ?? []) {
+      if (signal?.aborted) return;
+      yield decodeEvent(event);
+    }
+
+    if (response.cursor) {
+      cursor = response.cursor;
+    }
+
+    if (signal?.aborted) return;
+    await sleep(baseInterval, signal);
+  }
 }
 
 /**
@@ -250,6 +366,18 @@ export class PaymentContract {
     ]);
   }
 
+  // --- Events ---
+
+  /**
+   * Subscribes to decoded contract events via Soroban RPC `getEvents`.
+   *
+   * Returns an async iterator that polls with cursor handling and backoff.
+   * Pass an `AbortSignal` to stop the subscription.
+   */
+  events(options: ContractEventsOptions): AsyncGenerator<ContractEvent, void, unknown> {
+    return streamContractEvents(this.server, this.contractId, options);
+  }
+
   // --- Submission ---
 
   /**
@@ -266,15 +394,16 @@ export class PaymentContract {
 
     let response = await this.server.getTransaction(sent.hash);
     while (response.status === SorobanRpc.Api.GetTransactionStatus.NOT_FOUND) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await sleep(1000);
       response = await this.server.getTransaction(sent.hash);
     }
 
     if (response.status === SorobanRpc.Api.GetTransactionStatus.FAILED) {
-      throw this.toError(`Transaction failed: ${sent.hash}`);
+      throw this.toError(JSON.stringify(response.resultXdr ?? response.status));
     }
 
-    const retval = (response as SorobanRpc.Api.GetSuccessfulTransactionResponse).returnValue;
+    const success = response as SorobanRpc.Api.GetSuccessfulTransactionResponse;
+    const retval = success.returnValue;
     return {
       hash: sent.hash,
       status: 'SUCCESS',
@@ -282,5 +411,3 @@ export class PaymentContract {
     };
   }
 }
-
-export default PaymentContract;

@@ -22,6 +22,18 @@ export interface FacilPayOptions extends HttpClientOptions {
   checkoutBaseUrl?: string;
 }
 
+/**
+ * Per-client overrides accepted by `facilpay.withOptions()`. Only the
+ * listed fields are overridable; everything else is inherited from the
+ * parent client.
+ */
+export interface FacilPayOverrideOptions {
+  timeout?: number;
+  maxRetries?: number;
+  apiKey?: string;
+  headers?: Record<string, string>;
+}
+
 const TEST_KEY_PREFIX = 'fp_test_';
 const LIVE_KEY_PREFIX = 'fp_live_';
 
@@ -114,6 +126,7 @@ export class FacilPay {
 
   #apiKey: string;
   #liveWarningLogged = false;
+  #options: FacilPayOptions;
 
   constructor(options: FacilPayOptions = {}) {
     validateOptions(options);
@@ -121,6 +134,7 @@ export class FacilPay {
     const environment = detectEnvironment(apiKey);
 
     this.#apiKey = apiKey;
+    this.#options = { ...options };
     this.environment = environment;
     this.isTestMode = environment === 'test';
 
@@ -152,6 +166,37 @@ export class FacilPay {
     this.webhooks = new WebhooksResource(this.http);
     this.apiKeys = new ApiKeysResource(this.http);
     this.stellar = new Stellar(this.http);
+  }
+
+  /**
+   * Returns a new lightweight client that shares this client's `fetch` and
+   * configuration, with the given per-client overrides applied. The original
+   * client is never mutated. When `apiKey` changes, the environment is
+   * re-detected from the new key.
+   */
+  withOptions(overrides: FacilPayOverrideOptions = {}): FacilPay {
+    const nextOptions: FacilPayOptions = {
+      ...this.#options,
+      apiKey: this.#apiKey,
+    };
+
+    if (overrides.timeout !== undefined) {
+      nextOptions.timeout = overrides.timeout;
+    }
+    if (overrides.maxRetries !== undefined) {
+      nextOptions.maxRetries = overrides.maxRetries;
+    }
+    if (overrides.apiKey !== undefined) {
+      nextOptions.apiKey = overrides.apiKey;
+    }
+    if (overrides.headers !== undefined) {
+      nextOptions.headers = {
+        ...this.#options.headers,
+        ...overrides.headers,
+      };
+    }
+
+    return new FacilPay(nextOptions);
   }
 
   #warnLiveKeyInBrowser(): void {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createServer, type Server } from 'node:http';
-import { FacilPay } from '../../src/index';
+import { FacilPay, FacilPayAPIError } from '../../src/index';
 
 /**
  * Integration tests against a real facilpay-api + PostgreSQL instance.
@@ -128,5 +128,89 @@ describeIntegration('facilpay-api integration', () => {
     } finally {
       await new Promise<void>((res) => receiver.server.close(() => res()));
     }
+  });
+
+  it('supports a partial refund followed by a full refund', async () => {
+    const created = await client.payments.create({
+      amount: 2000,
+      currency: 'USD',
+      description: 'integration refund',
+    });
+
+    const partial = await client.payments.refund(created.id, { amount: 500 });
+    expect(partial.id).toBe(created.id);
+    expect(partial.status).toBe('PARTIALLY_REFUNDED');
+
+    const full = await client.payments.refund(created.id, { amount: 1500 });
+    expect(full.id).toBe(created.id);
+    expect(full.status).toBe('REFUNDED');
+  });
+
+  it('creates a dispute, uploads evidence and updates it', async () => {
+    const created = await client.disputes.create({
+      paymentId: 'pay_integration_dispute',
+      reason: 'fraudulent',
+      amount: 1000,
+      currency: 'USD',
+    });
+    expect(created.id).toBeTruthy();
+    expect(created.status).toBeDefined();
+
+    const evidence = await client.disputes.uploadEvidence(created.id, {
+      description: 'integration evidence',
+      documents: ['https://example.com/receipt.pdf'],
+    });
+    expect(evidence.id).toBe(created.id);
+
+    const updated = await client.disputes.update(created.id, {
+      status: 'under_review',
+    });
+    expect(updated.id).toBe(created.id);
+    expect(updated.status).toBe('under_review');
+  });
+
+  it('runs the recurring payment lifecycle: create -> pause -> resume -> cancel', async () => {
+    const created = await client.recurring.create({
+      amount: 900,
+      currency: 'USD',
+      interval: 'month',
+      description: 'integration recurring',
+    });
+    expect(created.id).toBeTruthy();
+    expect(created.status).toBeDefined();
+
+    const paused = await client.recurring.pause(created.id);
+    expect(paused.id).toBe(created.id);
+    expect(paused.status).toBe('paused');
+
+    const resumed = await client.recurring.resume(created.id);
+    expect(resumed.id).toBe(created.id);
+    expect(resumed.status).toBe('active');
+
+    const canceled = await client.recurring.cancel(created.id);
+    expect(canceled.id).toBe(created.id);
+    expect(canceled.status).toBe('canceled');
+  });
+
+  it('creates, rotates and revokes an API key, then rejects the revoked key', async () => {
+    const created = await client.apiKeys.create({ name: 'integration key' });
+    expect(created.id).toBeTruthy();
+    expect(created.key).toBeTruthy();
+
+    const rotated = await client.apiKeys.rotate(created.id);
+    expect(rotated.id).toBe(created.id);
+    expect(rotated.key).toBeTruthy();
+    expect(rotated.key).not.toBe(created.key);
+
+    const revoked = await client.apiKeys.revoke(created.id);
+    expect(revoked.id).toBe(created.id);
+
+    const revokedClient = new FacilPay({ apiKey: rotated.key, baseUrl: BASE_URL });
+    await expect(revokedClient.payments.list({ limit: 1 })).rejects.toBeInstanceOf(
+      FacilPayAPIError,
+    );
+    await expect(revokedClient.payments.list({ limit: 1 })).rejects.toMatchObject({
+      status: 401,
+    });
   });
 });

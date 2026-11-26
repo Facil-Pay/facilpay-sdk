@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HttpClient } from './http';
+import { FacilPayConnectionError } from './errors';
 
 function jsonResponse(status: number, body: unknown, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {
@@ -160,5 +161,70 @@ describe('HttpClient automatic retries', () => {
 
     expect(fetch).toHaveBeenCalledTimes(3);
     expect(logger.error).toHaveBeenCalledWith(expect.objectContaining({ attempt: 3, status: 500 }));
+  });
+
+  it('wraps a request timeout in FacilPayConnectionError', async () => {
+    const fetch = vi.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => {
+            reject(new DOMException('The operation was aborted.', 'AbortError'));
+          });
+        }),
+    );
+    const http = new HttpClient({
+      fetch: fetch as unknown as typeof globalThis.fetch,
+      timeoutMs: 1_000,
+      maxRetries: 0,
+    });
+
+    const pending = http.request({ path: '/payments' });
+    const assertion = expect(pending).rejects.toBeInstanceOf(FacilPayConnectionError);
+    await vi.advanceTimersByTimeAsync(1_000);
+    await assertion;
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not retry when the caller aborts', async () => {
+    const controller = new AbortController();
+    const fetch = vi.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => {
+            reject(new DOMException('The operation was aborted.', 'AbortError'));
+          });
+        }),
+    );
+    const http = new HttpClient({ fetch: fetch as unknown as typeof globalThis.fetch });
+
+    const pending = http.request({ path: '/payments', signal: controller.signal });
+    const assertion = expect(pending).rejects.toThrow();
+    controller.abort();
+    await assertion;
+
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops retrying when the caller aborts during backoff', async () => {
+    const controller = new AbortController();
+    const fetch = vi.fn(async () => jsonResponse(500, { message: 'boom' }));
+    const http = new HttpClient({
+      fetch: fetch as unknown as typeof globalThis.fetch,
+      maxRetries: 3,
+    });
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+
+    const pending = http.request({ path: '/payments', signal: controller.signal });
+    const assertion = expect(pending).rejects.toThrow();
+    // Let the first attempt fail and enter the backoff wait.
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    controller.abort();
+    await assertion;
+
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 });
