@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@facilpay/sdk": "file:../..",
-    "dotenv": "^16.4.7"
+    "dotenv": "^18.0.10"
   },
   "devDependencies": {
     "@types/node": "^22.15.30",
